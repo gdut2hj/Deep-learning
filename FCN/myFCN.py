@@ -4,17 +4,32 @@ import time
 import numpy as np
 import cv2
 import tensorflow as tf
-# import tensorflow.keras.backend as K
-from tensorflow.python.keras import backend as K
-from tensorflow.python.keras.layers import *
-from tensorflow.python.keras import Input
-from tensorflow.python.keras.models import Model
-from tensorflow.python.keras.regularizers import l2
-from tensorflow.python.keras import optimizers
 from PIL import Image
+import sys
+if (sys.platform == 'win32'):
+    win32Config()
+elif(sys.platform == 'linux'):
+    linuxConfig()
+else:
+    print('this machine is not win32 or linux, please check out your platform')
+    exit()
 
-os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-os.environ['CUDA_VISIBLE_DEVICES'] = '1'
+# import tensorflow.keras.backend as K
+def win32Config():
+    from tensorflow.keras.layers import *
+def linuxConfig():
+    from tensorflow.python.keras import backend as K
+    from tensorflow.python.keras.layers import *
+    from tensorflow.python.keras import Input
+    from tensorflow.python.keras.models import Model
+    from tensorflow.python.keras.regularizers import l2
+    from tensorflow.python.keras import optimizers
+    
+    os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+    os.environ['CUDA_VISIBLE_DEVICES'] = '1'
+
+
+
 
 data_dir = os.path.expanduser('~/zhouhua/datasets/VOCdevkit/VOC2012')
 
