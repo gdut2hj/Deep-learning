@@ -17,6 +17,7 @@ else:
 # import tensorflow.keras.backend as K
 def win32Config():
     from tensorflow.keras.layers import *
+    from tensorflow.keras import optimizers
 def linuxConfig():
     from tensorflow.python.keras import backend as K
     from tensorflow.python.keras.layers import *
