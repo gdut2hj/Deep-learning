@@ -1,3 +1,6 @@
+'''
+说明：训练数据集使用的VOC2012数据集，效果太差，由于数据量太大，也不好掌握参数的调整方法，需要先用较小的数据数据集训练
+'''
 import matplotlib.pyplot as plt
 import os 
 import time
