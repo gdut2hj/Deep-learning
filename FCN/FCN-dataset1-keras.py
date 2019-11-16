@@ -25,7 +25,7 @@ VGG_Weights_path = '/home/ye/zhouhua/models/vgg16_weights_tf_dim_ordering_tf_ker
 input_height, input_width = 224, 224
 output_height, output_width = 224, 224
 shape = (224, 224)
-n_classes = 10
+n_classes = 12
 
 
 def give_color_to_seg_img(seg, n_classes):
@@ -235,6 +235,16 @@ def IoU(Yi, y_predi):
 if __name__ == '__main__':
     X, Y = readImgaeAndSeg()
     (X_train, y_train), (X_test, y_test) = splitDatasets(X, Y, 0.85)
+
+    # 保存测试数据，在jupyter中导入使用模型预测，观察效果
+    pickle_out = open("X_test.pickle", "wb")
+    pickle.dump(X_test, pickle_out)
+    pickle_out.close()
+
+    pickle_out = open("y_test.pickle", "wb")
+    pickle.dump(y_test, pickle_out)
+    pickle_out.close()
+
     tensorboard = TensorBoard(
         log_dir='/home/ye/zhouhua/logs/FCN/FCN-dataset1-keras-{}'.format(int(time.time())))
 
