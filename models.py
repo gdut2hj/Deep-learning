@@ -2,7 +2,6 @@
 
 from tensorflow.python.keras.models import Model, load_model
 from tensorflow.python.keras.layers import Conv2D, Conv2DTranspose, MaxPooling2D, Add, Activation, Input
-
 import tensorflow as tf
 
 
