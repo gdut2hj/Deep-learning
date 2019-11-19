@@ -9,25 +9,30 @@ import cv2
 import tensorflow as tf
 from tensorflow.python.keras.callbacks import TensorBoard, EarlyStopping, ModelCheckpoint
 from tensorflow.python.keras import optimizers
-from utils import dataset1_Utils, commonUtils
 from models import FCN8
+from utils.utils import dataset1_Utils, commonUtils
+import pickle
 
 if __name__ == '__main__':
+    commonUtils.GPUConfig()
+    if (os.path.exists("./data/X.pickle") and os.path.exists("./data/Y.pickle")):
+        X = pickle.load('./data/X.pickle')
+        Y = pickle.load('./data/Y.pickle')
+        
+    else:
+        dataGen = dataset1_Utils()
+        X, Y = dataGen.readImgaeAndSeg()
+        # # 保存测试数据，在jupyter中导入使用模型预测，观察效果
+        pickle_out = open("./data/X.pickle", "wb")
+        pickle.dump(X, pickle_out)
+        pickle_out.close()
+
+        pickle_out = open("./data/Y.pickle'", "wb")
+        pickle.dump(Y, pickle_out)
+        pickle_out.close()
     
-    
-    dataGen = dataset1_Utils()
-    X, Y = dataGen.readImgaeAndSeg()
     (X_train, y_train), (X_test, y_test) = dataGen.splitDatasets(X, Y, 0.85)
-
-    # # 保存测试数据，在jupyter中导入使用模型预测，观察效果
-    # pickle_out = open("X_test.pickle", "wb")
-    # pickle.dump(X_test, pickle_out)
-    # pickle_out.close()
-
-    # pickle_out = open("y_test.pickle", "wb")
-    # pickle.dump(y_test, pickle_out)
-    # pickle_out.close()
-
+    
     tensorboard = TensorBoard(
          log_dir='/home/ye/zhouhua/logs/FCN/FCN-dataset1-keras-{}'.format(int(time.time())))
 
