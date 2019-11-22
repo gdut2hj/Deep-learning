@@ -11,7 +11,7 @@ import cv2
 import tensorflow as tf
 from tensorflow.python.keras.callbacks import TensorBoard, EarlyStopping, ModelCheckpoint
 from tensorflow.python.keras import optimizers
-from models import FCN8, Unet
+from models import FCN8, Unet_1, unet_2
 from utils.utils import dataset1_Utils, commonUtils, dataset1_generator_reader
 import pickle
 
@@ -48,9 +48,7 @@ if __name__ == '__main__':
     tensorboard = TensorBoard(
         log_dir='/home/ye/zhouhua/logs/dataset1/Unet-dataset1-original-{}'.format(int(time.time())))
 
-    model = Unet(nClasses=12,
-                 input_height=224,
-                 input_width=224)
+    model = unet_2()
     model.summary()
 
     sgd = optimizers.SGD(lr=1E-2, decay=5**(-4), momentum=0.9, nesterov=True)
@@ -70,7 +68,7 @@ if __name__ == '__main__':
     # model.load_weights(best_weights_filepath)
     model.fit_generator(generator=x_train,
     steps_per_epoch=steps_per_epoch,
-    epochs=200,
+    epochs=500,
     validation_data=y_train,
     validation_steps=validation_steps,
     verbose=1,
