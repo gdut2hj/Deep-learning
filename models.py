@@ -113,7 +113,7 @@ def FCN8(nClasses, input_height=224, input_width=224):
 
     return model
 
-def Unet(nClasses, input_height, input_width):
+def Unet_1(nClasses, input_height, input_width):
     # 模型来源: https://github.com/zhixuhao/unet/blob/master/model.py
     IMAGE_ORDERING = "channels_last"
     assert input_height % 2 == 0
@@ -170,87 +170,89 @@ def Unet(nClasses, input_height, input_width):
        	model.load_weights(pretrained_weights)
     return model
 
-    def unet(pretrained_weights = None, input_size = (IMAGE_SIZE,IMAGE_SIZE,3),num_class=2):
-        inputs = Input(input_size)
-        conv1 = Conv2D(64,3,activation=None,padding='same',kernel_initializer='he_normal')(inputs)
-        conv1 = LeakyReLU(alpha=0.3)(conv1)
-        conv1 = Conv2D(64,3,activation=None,padding='same',kernel_initializer='he_normal')(conv1)
-        conv1 = LeakyReLU(alpha=0.3)(conv1)
-        pool1 = MaxPool2D(pool_size=(2,2))(conv1)
 
-        conv2 = Conv2D(128,3,activation=None,padding='same',kernel_initializer='he_normal')(pool1)
-        conv2 = LeakyReLU(alpha=0.3)(conv2)
-        conv2 = Conv2D(128,3,activation=None,padding='same',kernel_initializer='he_normal')(conv2)
-        conv2 = LeakyReLU(alpha=0.3)(conv2)
-        pool2 = MaxPool2D(pool_size=(2,2))(conv2)
+def unet_2(pretrained_weights=None, input_size=(224, 224, 3), num_class=12):
+    # 模型来源: https://blog.csdn.net/LawenceRay/article/details/97391350
+    inputs = Input(input_size)
+    conv1 = Conv2D(64,3,activation=None,padding='same',kernel_initializer='he_normal')(inputs)
+    conv1 = LeakyReLU(alpha=0.3)(conv1)
+    conv1 = Conv2D(64,3,activation=None,padding='same',kernel_initializer='he_normal')(conv1)
+    conv1 = LeakyReLU(alpha=0.3)(conv1)
+    pool1 = MaxPool2D(pool_size=(2,2))(conv1)
 
-        conv3 = Conv2D(256,3,activation=None,padding='same',kernel_initializer='he_normal')(pool2)
-        conv3 = LeakyReLU(alpha=0.3)(conv3)
-        conv3 = Conv2D(256,3,activation=None,padding='same',kernel_initializer='he_normal')(conv3)
-        conv3 = LeakyReLU(alpha=0.3)(conv3)
-        pool3 = MaxPool2D(pool_size=(2,2))(conv3)
+    conv2 = Conv2D(128,3,activation=None,padding='same',kernel_initializer='he_normal')(pool1)
+    conv2 = LeakyReLU(alpha=0.3)(conv2)
+    conv2 = Conv2D(128,3,activation=None,padding='same',kernel_initializer='he_normal')(conv2)
+    conv2 = LeakyReLU(alpha=0.3)(conv2)
+    pool2 = MaxPool2D(pool_size=(2,2))(conv2)
 
-        conv4 = Conv2D(512,3,activation=None,padding='same',kernel_initializer='he_normal')(pool3)
-        conv4 = LeakyReLU(alpha=0.3)(conv4)
-        conv4 = Conv2D(512,3,activation=None,padding='same',kernel_initializer='he_normal')(conv4)
-        conv4 = LeakyReLU(alpha=0.3)(conv4)
-        drop4 = Dropout(0.5)(conv4)
-        pool4 = MaxPool2D(pool_size=(2,2))(drop4)
+    conv3 = Conv2D(256,3,activation=None,padding='same',kernel_initializer='he_normal')(pool2)
+    conv3 = LeakyReLU(alpha=0.3)(conv3)
+    conv3 = Conv2D(256,3,activation=None,padding='same',kernel_initializer='he_normal')(conv3)
+    conv3 = LeakyReLU(alpha=0.3)(conv3)
+    pool3 = MaxPool2D(pool_size=(2,2))(conv3)
 
-        conv5 = Conv2D(1024,3,activation=None,padding='same',kernel_initializer='he_normal')(pool4)
-        conv5 = LeakyReLU(alpha=0.3)(conv5)
-        conv5 = Conv2D(1024,3,activation=None,padding='same',kernel_initializer='he_normal')(conv5)
-        conv5 = LeakyReLU(alpha=0.3)(conv5)
-        drop5 = Dropout(0.5)(conv5)
+    conv4 = Conv2D(512,3,activation=None,padding='same',kernel_initializer='he_normal')(pool3)
+    conv4 = LeakyReLU(alpha=0.3)(conv4)
+    conv4 = Conv2D(512,3,activation=None,padding='same',kernel_initializer='he_normal')(conv4)
+    conv4 = LeakyReLU(alpha=0.3)(conv4)
+    drop4 = Dropout(0.5)(conv4)
+    pool4 = MaxPool2D(pool_size=(2,2))(drop4)
 
-        up6 = Conv2D(512,2,activation=None,padding='same',kernel_initializer='he_normal')(UpSampling2D(size=(2,2))(drop5))
-        up6 = LeakyReLU(alpha=0.3)(up6)
-        merge6 = concatenate([drop4,up6],axis=3)
-        conv6 = Conv2D(512,3,activation=None,padding='same',kernel_initializer='he_normal')(merge6)
-        conv6 = LeakyReLU(alpha=0.3)(conv6)
-        conv6 = Conv2D(512,3,activation=None,padding='same',kernel_initializer='he_normal')(conv6)
-        conv6 = LeakyReLU(alpha=0.3)(conv6)
+    conv5 = Conv2D(1024,3,activation=None,padding='same',kernel_initializer='he_normal')(pool4)
+    conv5 = LeakyReLU(alpha=0.3)(conv5)
+    conv5 = Conv2D(1024,3,activation=None,padding='same',kernel_initializer='he_normal')(conv5)
+    conv5 = LeakyReLU(alpha=0.3)(conv5)
+    drop5 = Dropout(0.5)(conv5)
 
-        up7 = Conv2D(256,3,activation=None,padding='same',kernel_initializer='he_normal')(UpSampling2D(size=(2,2))(conv6))
-        up7 = LeakyReLU(alpha=0.3)(up7)
-        merge7 = concatenate([conv3,up7],axis=3)
-        conv7 = Conv2D(256,3,activation=None,padding='same',kernel_initializer='he_normal')(merge7)
-        conv7 = LeakyReLU(alpha=0.3)(conv7)
-        conv7 = Conv2D(256,3,activation=None,padding='same',kernel_initializer='he_normal')(conv7)
-        conv7 = LeakyReLU(alpha=0.3)(conv7)
+    up6 = Conv2D(512,2,activation=None,padding='same',kernel_initializer='he_normal')(UpSampling2D(size=(2,2))(drop5))
+    up6 = LeakyReLU(alpha=0.3)(up6)
+    merge6 = concatenate([drop4,up6],axis=3)
+    conv6 = Conv2D(512,3,activation=None,padding='same',kernel_initializer='he_normal')(merge6)
+    conv6 = LeakyReLU(alpha=0.3)(conv6)
+    conv6 = Conv2D(512,3,activation=None,padding='same',kernel_initializer='he_normal')(conv6)
+    conv6 = LeakyReLU(alpha=0.3)(conv6)
+
+    up7 = Conv2D(256,3,activation=None,padding='same',kernel_initializer='he_normal')(UpSampling2D(size=(2,2))(conv6))
+    up7 = LeakyReLU(alpha=0.3)(up7)
+    merge7 = concatenate([conv3,up7],axis=3)
+    conv7 = Conv2D(256,3,activation=None,padding='same',kernel_initializer='he_normal')(merge7)
+    conv7 = LeakyReLU(alpha=0.3)(conv7)
+    conv7 = Conv2D(256,3,activation=None,padding='same',kernel_initializer='he_normal')(conv7)
+    conv7 = LeakyReLU(alpha=0.3)(conv7)
 
 
-        up8 = Conv2D(128,3,activation=None,padding='same',kernel_initializer='he_normal')(UpSampling2D(size=(2,2))(conv7))
-        up8 = LeakyReLU(alpha=0.3)(up8)
-        merge8 = concatenate([conv2,up8],axis=3)
-        conv8 = Conv2D(128,3,activation=None,padding='same',kernel_initializer='he_normal')(merge8)
-        conv8 = LeakyReLU(alpha=0.3)(conv8)
-        conv8 = Conv2D(128,3,activation=None,padding='same',kernel_initializer='he_normal')(conv8)
-        conv8 = LeakyReLU(alpha=0.3)(conv8)
+    up8 = Conv2D(128,3,activation=None,padding='same',kernel_initializer='he_normal')(UpSampling2D(size=(2,2))(conv7))
+    up8 = LeakyReLU(alpha=0.3)(up8)
+    merge8 = concatenate([conv2,up8],axis=3)
+    conv8 = Conv2D(128,3,activation=None,padding='same',kernel_initializer='he_normal')(merge8)
+    conv8 = LeakyReLU(alpha=0.3)(conv8)
+    conv8 = Conv2D(128,3,activation=None,padding='same',kernel_initializer='he_normal')(conv8)
+    conv8 = LeakyReLU(alpha=0.3)(conv8)
 
-        up9 = Conv2D(64,3,activation=None,padding='same',kernel_initializer='he_normal')(UpSampling2D(size=(2,2))(conv8))
-        up9 = LeakyReLU(alpha=0.3)(up9)
-        merge9 = concatenate([conv1,up9],axis=3)
-        conv9 = Conv2D(64,3,activation=None,padding='same',kernel_initializer='he_normal')(merge9)
-        conv9 = LeakyReLU(alpha=0.3)(conv9)
-        conv9 = Conv2D(64,3,activation=None,padding='same',kernel_initializer='he_normal')(conv9)
-        conv9 = LeakyReLU(alpha=0.3)(conv9)
+    up9 = Conv2D(64,3,activation=None,padding='same',kernel_initializer='he_normal')(UpSampling2D(size=(2,2))(conv8))
+    up9 = LeakyReLU(alpha=0.3)(up9)
+    merge9 = concatenate([conv1,up9],axis=3)
+    conv9 = Conv2D(64,3,activation=None,padding='same',kernel_initializer='he_normal')(merge9)
+    conv9 = LeakyReLU(alpha=0.3)(conv9)
+    conv9 = Conv2D(64,3,activation=None,padding='same',kernel_initializer='he_normal')(conv9)
+    conv9 = LeakyReLU(alpha=0.3)(conv9)
 
-        if num_class == 2:#判断是否多分类问题，二分类激活函数使用sigmoid，而多分割采用softmax。相应的损失函数的选择也各有不同。
-            conv10 = Conv2D(1,1,activation='sigmoid')(conv9)
-            loss_function = 'binary_crossentropy'
-        else:
-            conv10 = Conv2D(num_class,1,activation='softmax')(conv9)
-            loss_function = 'categorical_crossentropy'
+    if num_class == 2:#判断是否多分类问题，二分类激活函数使用sigmoid，而多分割采用softmax。相应的损失函数的选择也各有不同。
+        conv10 = Conv2D(1,1,activation='sigmoid')(conv9)
+        loss_function = 'binary_crossentropy'
+    else:
+        conv10 = Conv2D(num_class,1,activation='softmax')(conv9)
+        loss_function = 'categorical_crossentropy'
 
-        # conv10 = Conv2D(3,1,activation='softamx')(conv9)
+    # conv10 = Conv2D(3,1,activation='softamx')(conv9)
 
-        model = Model(input= inputs,output=conv10)
+    model = Model(inputs,conv10)
 
-        model.compile(optimizer=Adam(lr = 1e-5),loss=loss_function,metrics=['accuracy'])
-        model.summary()
+    #model.compile(optimizer=Adam(lr = 1e-5),loss=loss_function,metrics=['accuracy'])
+    model.summary()
 
-        if pretrained_weights:
-            model.load_weights(pretrained_weights)
+    if pretrained_weights:
+        model.load_weights(pretrained_weights)
 
-        return model
+    return model
