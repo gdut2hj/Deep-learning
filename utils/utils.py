@@ -9,7 +9,16 @@ import pandas as pd
 import numpy as np
 from sklearn.utils import shuffle
 from tensorflow.python.keras import backend as K
+from tensorflow.python.keras.preprocessing.image import apply_transform, flip_axis, random_channel_shift
+from tensorflow.python.keras.preprocessing.image import ImageDataGenerator 
 
+def transform_matrix_offset_center(matrix, x, y):
+    o_x = float(x) / 2 + 0.5
+    o_y = float(y) / 2 + 0.5
+    offset_matrix = np.array([[1, 0, o_x], [0, 1, o_y], [0, 0, 1]])
+    reset_matrix = np.array([[1, 0, -o_x], [0, 1, -o_y], [0, 0, 1]])
+    transform_matrix = np.dot(np.dot(offset_matrix, matrix), reset_matrix)
+    return transform_matrix
 
 class VOC2012_Utils:
     pass
@@ -118,7 +127,11 @@ class dataset1_generator_reader:
                  input_width=224,
                  resize_height=224,
                  resize_width=224,
-                 nClasses=12):
+                 zoom_range=0.,
+                 nClasses=12,
+                 width_shift_range=0.,
+                 height_shift_range=0.,
+                 rotation_range=0., ):
         self.dir_data = '/home/ye/zhouhua/datasets/dataset1'
         self.dir_seg = self.dir_data + "/annotations_prepped_train/"
         self.dir_img = self.dir_data + "/images_prepped_train/"
@@ -222,6 +235,228 @@ class dataset1_generator_reader:
             for j in range(x.shape[1]):  # 256
                 one_hot[i,j,x[i,j]]=1
             return one_hot
+    def pair_center_crop(self, x, y, center_crop_size, data_format, **kwargs):
+        if data_format == 'channels_first':
+            centerh, centerw = x.shape[1] // 2, x.shape[2] // 2
+        elif data_format == 'channels_last':
+            centerh, centerw = x.shape[0] // 2, x.shape[1] // 2   # 获取中心点
+        lh, lw = center_crop_size[0] // 2, center_crop_size[1] // 2   # 获取剪裁后的中心点 channels_last
+        rh, rw = center_crop_size[0] - lh, center_crop_size[1] - lw   # 得到剪裁后的中心点距离边缘的长度
+        
+        h_start, h_end = centerh - lh, centerh + rh             
+        w_start, w_end = centerw - lw, centerw + rw                 # 计算原图从中心点开始裁剪的长和宽channels_last 
+        if data_format == 'channels_first':
+            return x[:, h_start:h_end, w_start:w_end], \
+                y[:, h_start:h_end, w_start:w_end]
+        elif data_format == 'channels_last':                        # 返回剪裁后的图像
+            return x[h_start:h_end, w_start:w_end, :], \
+                y[h_start:h_end, w_start:w_end, :]
+    
+    def random_transform(self, x, y):
+        # x is a single image, so it doesn't have image number at index 0
+        img_row_index = 0   # we always use channels_last, so row index is 0, col is 1, channels is 2
+        img_col_index = 1
+        img_channel_index = 2
+        if self.crop_mode == 'none':
+            crop_size = (x.shape[img_row_index], x.shape[img_col_index])
+        else:
+            crop_size = self.crop_size
+
+        assert x.shape[img_row_index] == y.shape[img_row_index] and x.shape[img_col_index] == y.shape[
+            img_col_index], 'DATA ERROR: Different shape of data and label!\ndata shape: %s, label shape: %s' % (str(x.shape), str(y.shape))
+
+        # use composition of homographies to generate final transform that
+        # needs to be applied
+        if self.rotation_range:
+            theta = np.pi / 180 * \
+                np.random.uniform(-self.rotation_range, self.rotation_range)  #  angle convert to radian
+        else:
+            theta = 0
+        rotation_matrix = np.array([[np.cos(theta), -np.sin(theta), 0],     # get rotation matrix
+                                    [np.sin(theta), np.cos(theta), 0],
+                                    [0, 0, 1]])
+        if self.height_shift_range:
+            # * x.shape[img_row_index]
+            tx = np.random.uniform(-self.height_shift_range,
+                                   self.height_shift_range) * crop_size[0]
+        else:
+            tx = 0
+
+        if self.width_shift_range:
+            # * x.shape[img_col_index]
+            ty = np.random.uniform(-self.width_shift_range,
+                                   self.width_shift_range) * crop_size[1]
+        else:
+            ty = 0
+
+        translation_matrix = np.array([[1, 0, tx],
+                                       [0, 1, ty],
+                                       [0, 0, 1]])
+        if self.shear_range:
+            shear = np.random.uniform(-self.shear_range, self.shear_range)
+        else:
+            shear = 0
+        shear_matrix = np.array([[1, -np.sin(shear), 0],
+                                 [0, np.cos(shear), 0],
+                                 [0, 0, 1]])
+
+        if self.zoom_range[0] == 1 and self.zoom_range[1] == 1:
+            zx, zy = 1, 1
+        else:
+            zx, zy = np.random.uniform(
+                self.zoom_range[0], self.zoom_range[1], 2)
+        if self.zoom_maintain_shape:
+            zy = zx
+        zoom_matrix = np.array([[zx, 0, 0],
+                                [0, zy, 0],
+                                [0, 0, 1]])
+
+        transform_matrix = np.dot(
+            np.dot(np.dot(rotation_matrix, translation_matrix), shear_matrix), zoom_matrix)
+
+        h, w = x.shape[img_row_index], x.shape[img_col_index]
+        
+        transform_matrix = transform_matrix_offset_center(
+            transform_matrix, h, w)
+
+        x = apply_transform(x, transform_matrix, img_channel_index,
+                            fill_mode=self.fill_mode, cval=self.cval)
+        y = apply_transform(y, transform_matrix, img_channel_index,
+                            fill_mode='constant', cval=self.label_cval)
+
+        if self.channel_shift_range != 0:
+            x = random_channel_shift(
+                x, self.channel_shift_range, img_channel_index)
+
+        if self.horizontal_flip:
+            if np.random.random() < 0.5:
+                x = flip_axis(x, img_col_index)
+                y = flip_axis(y, img_col_index)
+
+        if self.vertical_flip:
+            if np.random.random() < 0.5:
+                x = flip_axis(x, img_row_index)
+                y = flip_axis(y, img_row_index)
+
+        if self.crop_mode == 'center':
+            x, y = pair_center_crop(x, y, self.crop_size, self.data_format)
+        elif self.crop_mode == 'random':
+            x, y = pair_random_crop(x, y, self.crop_size, self.data_format)
+
+        # TODO:
+        # channel-wise normalization
+        # barrel/fisheye
+        return x, y
+        
+
+    def pair_random_crop(self, x, y, random_crop_size, data_format, sync_seed=None, **kwargs):
+        np.random.seed(sync_seed)
+        if data_format == 'channels_first':
+            h, w = x.shape[1], x.shape[2]
+        elif data_format == 'channels_last':
+            h, w = x.shape[0], x.shape[1]           # get height and width
+        rangeh = (h - random_crop_size[0]) // 2     # get difference from origin height and croped image height
+        rangew = (w - random_crop_size[1]) // 2
+        offseth = 0 if rangeh == 0 else np.random.randint(rangeh)  # get random offset height and width
+        offsetw = 0 if rangew == 0 else np.random.randint(rangew)  
+
+        h_start, h_end = offseth, offseth + random_crop_size[0]     # height + random crop size
+        w_start, w_end = offsetw, offsetw + random_crop_size[1]     # width + random crop size
+
+    def standardize(self, x):
+        pass
+
+    def random_transform(self, x, y, crop_size):
+        # x is a single image, so it doesn't have image number at index 0
+        img_row_index = self.row_index - 1
+        img_col_index = self.col_index - 1
+        img_channel_index = self.channel_index - 1
+       
+        assert x.shape[img_row_index] == y.shape[img_row_index] and x.shape[img_col_index] == y.shape[
+            img_col_index], 'DATA ERROR: Different shape of data and label!\ndata shape: %s, label shape: %s' % (str(x.shape), str(y.shape))
+
+        # use composition of homographies to generate final transform that
+        # needs to be applied
+        if self.rotation_range:
+            theta = np.pi / 180 * \
+                np.random.uniform(-self.rotation_range, self.rotation_range)
+        else:
+            theta = 0
+        rotation_matrix = np.array([[np.cos(theta), -np.sin(theta), 0],
+                                    [np.sin(theta), np.cos(theta), 0],
+                                    [0, 0, 1]])
+        if self.height_shift_range:
+            # * x.shape[img_row_index]
+            tx = np.random.uniform(-self.height_shift_range,
+                                   self.height_shift_range) * crop_size[0]
+        else:
+            tx = 0
+
+        if self.width_shift_range:
+            # * x.shape[img_col_index]
+            ty = np.random.uniform(-self.width_shift_range,
+                                   self.width_shift_range) * crop_size[1]
+        else:
+            ty = 0
+
+        translation_matrix = np.array([[1, 0, tx],
+                                       [0, 1, ty],
+                                       [0, 0, 1]])
+        if self.shear_range:
+            shear = np.random.uniform(-self.shear_range, self.shear_range)
+        else:
+            shear = 0
+        shear_matrix = np.array([[1, -np.sin(shear), 0],
+                                 [0, np.cos(shear), 0],
+                                 [0, 0, 1]])
+
+        if self.zoom_range[0] == 1 and self.zoom_range[1] == 1:
+            zx, zy = 1, 1
+        else:
+            zx, zy = np.random.uniform(
+                self.zoom_range[0], self.zoom_range[1], 2)
+        if self.zoom_maintain_shape:
+            zy = zx
+        zoom_matrix = np.array([[zx, 0, 0],
+                                [0, zy, 0],
+                                [0, 0, 1]])
+
+        transform_matrix = np.dot(
+            np.dot(np.dot(rotation_matrix, translation_matrix), shear_matrix), zoom_matrix)
+
+        h, w = x.shape[img_row_index], x.shape[img_col_index]
+        transform_matrix = transform_matrix_offset_center(
+            transform_matrix, h, w)
+
+        x = apply_transform(x, transform_matrix, img_channel_index,
+                            fill_mode=self.fill_mode, cval=self.cval)
+        y = apply_transform(y, transform_matrix, img_channel_index,
+                            fill_mode='constant', cval=self.label_cval)
+
+        if self.channel_shift_range != 0:
+            x = random_channel_shift(
+                x, self.channel_shift_range, img_channel_index)
+
+        if self.horizontal_flip:
+            if np.random.random() < 0.5:
+                x = flip_axis(x, img_col_index)
+                y = flip_axis(y, img_col_index)
+
+        if self.vertical_flip:
+            if np.random.random() < 0.5:
+                x = flip_axis(x, img_row_index)
+                y = flip_axis(y, img_row_index)
+
+        if self.crop_mode == 'center':
+            x, y = pair_center_crop(x, y, self.crop_size, self.data_format)
+        elif self.crop_mode == 'random':
+            x, y = pair_random_crop(x, y, self.crop_size, self.data_format)
+
+        # TODO:
+        # channel-wise normalization
+        # barrel/fisheye
+        return x, y
+    
     def getSegmentationArr(self, path, nClasses,  width, height):
         seg_labels = np.zeros((height, width, nClasses))
         img = cv2.imread(path, 1)
