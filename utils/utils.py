@@ -10,7 +10,8 @@ import numpy as np
 from sklearn.utils import shuffle
 from tensorflow.python.keras import backend as K
 from tensorflow.python.keras.preprocessing.image import apply_transform, flip_axis, random_channel_shift
-from tensorflow.python.keras.preprocessing.image import ImageDataGenerator 
+from tensorflow.python.keras.preprocessing.image import ImageDataGenerator
+
 
 def transform_matrix_offset_center(matrix, x, y):
     o_x = float(x) / 2 + 0.5
@@ -19,6 +20,7 @@ def transform_matrix_offset_center(matrix, x, y):
     reset_matrix = np.array([[1, 0, -o_x], [0, 1, -o_y], [0, 0, 1]])
     transform_matrix = np.dot(np.dot(offset_matrix, matrix), reset_matrix)
     return transform_matrix
+
 
 class VOC2012_Utils:
     pass
@@ -122,7 +124,7 @@ class dataset1_generator_reader:
     '用于dataset1的预处理类'
 
     def __init__(self, train_batch_size=16,
-                 val_batch_size =16,
+                 val_batch_size=16,
                  input_height=224,
                  input_width=224,
                  resize_height=224,
@@ -146,112 +148,99 @@ class dataset1_generator_reader:
         self.val_batch_index = 0
         self.train_file_name_list = self.load_file_name_list(self.dir_img)
         self.val_file_name_list = self.load_file_name_list(self.dir_seg)
-        self.n_train_file=len(self.train_file_name_list)  # 训练集的大小
-        self.n_val_file=len(self.val_file_name_list)       # 验证集的大小
+        self.n_train_file = len(self.train_file_name_list)  # 训练集的大小
+        self.n_val_file = len(self.val_file_name_list)       # 验证集的大小
         self.n_train_steps_per_epoch = self.n_train_file // self.train_batch_size
-        self.n_val_steps_per_epoch=self.n_val_file//self.val_batch_size  
-         
+        self.n_val_steps_per_epoch = self.n_val_file//self.val_batch_size
+
     def load_file_name_list(self, filepath):
         images = os.listdir(filepath)
         images.sort()
         return images
+
     def next_train_batch(self, input_channel=3, output_channel=12):
-        train_imgs=np.zeros((self.train_batch_size,self.resize_height,self.resize_width,input_channel))
-        train_labels = np.zeros([self.train_batch_size, self.resize_height, self.resize_width, output_channel])
-        if self.train_batch_index>=self.n_train_steps_per_epoch:
+        train_imgs = np.zeros(
+            (self.train_batch_size, self.resize_height, self.resize_width, input_channel))
+        train_labels = np.zeros(
+            [self.train_batch_size, self.resize_height, self.resize_width, output_channel])
+        if self.train_batch_index >= self.n_train_steps_per_epoch:
             # print("next train epoch")
             self.train_batch_index = 0
-        #print('------------------')
-        #print(self.train_batch_index)
+        # print('------------------')
+        # print(self.train_batch_index)
         for i in range(self.train_batch_size):
-            index=self.train_batch_size*self.train_batch_index+i
-            #print('index'+str(index))
-            img = Image.open(self.dir_img+self.train_file_name_list[index]) # 读取训练数据
-            img=img.resize((self.resize_height,self.resize_width),Image.NEAREST)         # resize训练数据
+            index = self.train_batch_size*self.train_batch_index+i
+            img = Image.open(
+                self.dir_img+self.train_file_name_list[index])  # 读取训练数据
+            img = img.resize((self.resize_height, self.resize_width),
+                             Image.NEAREST)         # resize训练数据
             img = np.array(img)
-            img = np.float32(img) / 127.5 - 1 # 归一化
-            train_imgs[i]=img
-            #print('train img shape is: ', img.shape)
             np.set_printoptions(threshold=np.inf)
-
-            # label=Image.open(self.dir_seg+self.train_file_name_list[index])
-            # label=label.resize((self.resize_height,self.resize_width),Image.NEAREST)
-            # label=np.array(label, dtype=np.int32)
-            #label[label == 255] = -1
-            # label[label == 255] = 0
-            #print('label>11:',label[label>11])  # 看看有没有大于11的label
-            #print('label:', label)
-            #print('label shape:',label.shape)
-            # one_hot_label=self.make_one_hot(label,self.n_classes)
-            label = self.getSegmentationArr(self.dir_seg+self.train_file_name_list[index], self.n_classes, self.resize_width, self.resize_height)
-            train_labels[i]= label
-            #print('one hot label shape:', one_hot_label.shape)
-            #print('one hot label :', label)
-            #print(label)
-
-        self.train_batch_index+=1
-        #print('------------------')
-
-
+            label = self.getSegmentationArr(
+                self.dir_seg+self.train_file_name_list[index], self.n_classes, self.resize_width, self.resize_height)
+            img, label = self.pair_center_crop(
+                img, label, (self.resize_height, self.resize_height), 'channels_last')
+            img = np.float32(img) / 127.5 - 1  # 归一化
+            train_imgs[i] = img
+            train_labels[i] = label
+        self.train_batch_index += 1
         return train_imgs, train_labels
 
     def next_val_batch(self, input_channel=3, output_channel=12):
-        val_imgs = np.zeros((self.val_batch_size, self.resize_height, self.resize_width, input_channel))
-        val_labels = np.zeros([self.val_batch_size, self.resize_height, self.resize_width, output_channel])
-        if self.val_batch_index>=self.n_val_steps_per_epoch:
+        val_imgs = np.zeros(
+            (self.val_batch_size, self.resize_height, self.resize_width, input_channel))
+        val_labels = np.zeros(
+            [self.val_batch_size, self.resize_height, self.resize_width, output_channel])
+        if self.val_batch_index >= self.n_val_steps_per_epoch:
             #print("next train epoch")
-            self.val_batch_index=0
-        #print('------------------')
-        #print(self.val_batch_index)
-
+            self.val_batch_index = 0
+        # print('------------------')
+        # print(self.val_batch_index)
 
         for i in range(self.val_batch_size):
-            index=self.val_batch_size*self.val_batch_index+i
-            #print('index'+str(index))
-            img=Image.open(self.dir_img+self.val_file_name_list[index])
-            img = img.resize((self.resize_height, self.resize_width), Image.NEAREST)
+            index = self.val_batch_size*self.val_batch_index+i
+            img = Image.open(self.dir_img+self.val_file_name_list[index])
             img = np.array(img)
-            img = np.float32(img) / 127.5 - 1 # 归一化
-            #print('val img shape is:', img.shape)
-            val_imgs[i]=img
+            label = self.getSegmentationArr(
+                self.dir_seg + self.val_file_name_list[index], self.n_classes, self.resize_width, self.resize_height)
+            img, label = self.pair_center_crop(
+                img, label, (self.resize_height, self.resize_height), 'channels_last')
+            img = np.float32(img) / 127.5 - 1  # 归一化
+            val_imgs[i] = img
+            val_labels[i] = label
 
-            #label = Image.open(self.dir_seg + self.val_file_name_list[index])
-            label = self.getSegmentationArr(self.dir_seg + self.val_file_name_list[index], self.n_classes, self.resize_width, self.resize_height)
-            # label[label == 255] = -1
-            #label[label == 255] = 0
-            #print(label[label>11])
-            # print(label)
-            # print(label.shape)
-            #one_hot_label = self.make_one_hot(label, self.n_classes)
-            val_labels[i]=label
-        #print('------------------')
+        # print('------------------')
         self.val_batch_index += 1
-        
-        return val_imgs,val_labels
+
+        return val_imgs, val_labels
 
     def make_one_hot(self, x, n):
         one_hot = np.zeros([x.shape[0], x.shape[1], n])  # 256 256 21
-        for i in range(x.shape[0]): # 256
+        for i in range(x.shape[0]):  # 256
             for j in range(x.shape[1]):  # 256
-                one_hot[i,j,x[i,j]]=1
+                one_hot[i, j, x[i, j]] = 1
             return one_hot
+
     def pair_center_crop(self, x, y, center_crop_size, data_format, **kwargs):
         if data_format == 'channels_first':
             centerh, centerw = x.shape[1] // 2, x.shape[2] // 2
         elif data_format == 'channels_last':
             centerh, centerw = x.shape[0] // 2, x.shape[1] // 2   # 获取中心点
-        lh, lw = center_crop_size[0] // 2, center_crop_size[1] // 2   # 获取剪裁后的中心点 channels_last
-        rh, rw = center_crop_size[0] - lh, center_crop_size[1] - lw   # 得到剪裁后的中心点距离边缘的长度
-        
-        h_start, h_end = centerh - lh, centerh + rh             
-        w_start, w_end = centerw - lw, centerw + rw                 # 计算原图从中心点开始裁剪的长和宽channels_last 
+        # 获取剪裁后的中心点 channels_last
+        lh, lw = center_crop_size[0] // 2, center_crop_size[1] // 2
+        rh, rw = center_crop_size[0] - \
+            lh, center_crop_size[1] - lw   # 得到剪裁后的中心点距离边缘的长度
+
+        h_start, h_end = centerh - lh, centerh + rh
+        # 计算原图从中心点开始裁剪的长和宽channels_last
+        w_start, w_end = centerw - lw, centerw + rw
         if data_format == 'channels_first':
             return x[:, h_start:h_end, w_start:w_end], \
                 y[:, h_start:h_end, w_start:w_end]
         elif data_format == 'channels_last':                        # 返回剪裁后的图像
             return x[h_start:h_end, w_start:w_end, :], \
                 y[h_start:h_end, w_start:w_end, :]
-    
+
     def random_transform(self, x, y):
         # x is a single image, so it doesn't have image number at index 0
         img_row_index = 0   # we always use channels_last, so row index is 0, col is 1, channels is 2
@@ -269,7 +258,8 @@ class dataset1_generator_reader:
         # needs to be applied
         if self.rotation_range:
             theta = np.pi / 180 * \
-                np.random.uniform(-self.rotation_range, self.rotation_range)  #  angle convert to radian
+                np.random.uniform(-self.rotation_range,
+                                  self.rotation_range)  # angle convert to radian
         else:
             theta = 0
         rotation_matrix = np.array([[np.cos(theta), -np.sin(theta), 0],     # get rotation matrix
@@ -315,7 +305,7 @@ class dataset1_generator_reader:
             np.dot(np.dot(rotation_matrix, translation_matrix), shear_matrix), zoom_matrix)
 
         h, w = x.shape[img_row_index], x.shape[img_col_index]
-        
+
         transform_matrix = transform_matrix_offset_center(
             transform_matrix, h, w)
 
@@ -347,7 +337,6 @@ class dataset1_generator_reader:
         # channel-wise normalization
         # barrel/fisheye
         return x, y
-        
 
     def pair_random_crop(self, x, y, random_crop_size, data_format, sync_seed=None, **kwargs):
         np.random.seed(sync_seed)
@@ -355,13 +344,22 @@ class dataset1_generator_reader:
             h, w = x.shape[1], x.shape[2]
         elif data_format == 'channels_last':
             h, w = x.shape[0], x.shape[1]           # get height and width
-        rangeh = (h - random_crop_size[0]) // 2     # get difference from origin height and croped image height
+        # get difference from origin height and croped image height
+        rangeh = (h - random_crop_size[0]) // 2
         rangew = (w - random_crop_size[1]) // 2
-        offseth = 0 if rangeh == 0 else np.random.randint(rangeh)  # get random offset height and width
-        offsetw = 0 if rangew == 0 else np.random.randint(rangew)  
+        offseth = 0 if rangeh == 0 else np.random.randint(
+            rangeh)  # get random offset height and width
+        offsetw = 0 if rangew == 0 else np.random.randint(rangew)
 
-        h_start, h_end = offseth, offseth + random_crop_size[0]     # height + random crop size
-        w_start, w_end = offsetw, offsetw + random_crop_size[1]     # width + random crop size
+        h_start, h_end = offseth, offseth + \
+            random_crop_size[0]     # height + random crop size
+        w_start, w_end = offsetw, offsetw + \
+            random_crop_size[1]  # width + random crop size
+
+        if data_format == 'channels_first':
+            return x[:, h_start:h_end, w_start:w_end], y[:, h_start:h_end, h_start:h_end]
+        elif data_format == 'channels_last':
+            return x[h_start:h_end, w_start:w_end, :], y[h_start:h_end, w_start:w_end, :]
 
     def standardize(self, x):
         pass
@@ -371,7 +369,7 @@ class dataset1_generator_reader:
         img_row_index = self.row_index - 1
         img_col_index = self.col_index - 1
         img_channel_index = self.channel_index - 1
-       
+
         assert x.shape[img_row_index] == y.shape[img_row_index] and x.shape[img_col_index] == y.shape[
             img_col_index], 'DATA ERROR: Different shape of data and label!\ndata shape: %s, label shape: %s' % (str(x.shape), str(y.shape))
 
@@ -456,7 +454,7 @@ class dataset1_generator_reader:
         # channel-wise normalization
         # barrel/fisheye
         return x, y
-    
+
     def getSegmentationArr(self, path, nClasses,  width, height):
         seg_labels = np.zeros((height, width, nClasses))
         img = cv2.imread(path, 1)
@@ -465,27 +463,4 @@ class dataset1_generator_reader:
 
         for c in range(nClasses):
             seg_labels[:, :, c] = (img == c).astype(int)
-        ##seg_labels = np.reshape(seg_labels, ( width*height,nClasses  ))
         return seg_labels
-
-    def getImageArr(self, path, width, height):
-        img = cv2.imread(path, 1)
-        img = np.float32(cv2.resize(img, (width, height))) / 127.5 - 1
-        return img
-
-    def readImgaeAndSeg(self):
-        images = os.listdir(self.dir_img)
-        images.sort()
-        segmentations = os.listdir(self.dir_seg)
-        segmentations.sort()
-        X = []
-        Y = []
-        for im, seg in zip(images, segmentations):
-            X.append(self.getImageArr(self.dir_img + im,
-                                      self.input_width, self.input_height))
-            Y.append(self.getSegmentationArr(self.dir_seg + seg,
-                                             self.n_classes, self.output_width, self.output_height))
-
-        X, Y = np.array(X), np.array(Y)
-        print('X.shape,Y.shape: ', X.shape, Y.shape)
-        return X, Y
