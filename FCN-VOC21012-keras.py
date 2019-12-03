@@ -9,6 +9,7 @@ import cv2
 import tensorflow as tf
 from PIL import Image
 import sys
+import pickle
 
 from tensorflow.python.keras import backend as K
 from tensorflow.python.keras.layers import *
@@ -349,4 +350,5 @@ model.compile(loss='categorical_crossentropy',
               metrics=['accuracy'])
 hist1 = model.fit(x_train, y_train, validation_split=0.2,
                   batch_size=32, epochs=200, verbose=1)
-model.save('myFCN.model')
+with open('./data/FCN-VOC21012-keras.pickle', 'wb') as file_pi:
+        pickle.dump(hist1.history, file_pi)

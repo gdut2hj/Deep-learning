@@ -46,7 +46,7 @@ if __name__ == '__main__':
     y_train = val_generator_data(dataGen)
 
     tensorboard = TensorBoard(
-        log_dir='/home/ye/zhouhua/logs/dataset1/UnetResNet-dataset1-myown-{}'.format(int(time.time())))
+        log_dir='./logs/dataset1/UnetResNet-dataset1-myown-{}'.format(int(time.time())))
 
     model = Unet_ResNet_model(input_height=224, input_width=224)
     model.summary()
@@ -66,10 +66,12 @@ if __name__ == '__main__':
     #                  batch_size=32, epochs=200, verbose=1, callbacks=[tensorboard, earlyStopping, saveBestModel])
     # reload best weights
     # model.load_weights(best_weights_filepath)
-    model.fit_generator(generator=x_train,
+    hist1 = model.fit_generator(generator=x_train,
     steps_per_epoch=steps_per_epoch,
     epochs=500,
     validation_data=y_train,
     validation_steps=validation_steps,
     verbose=1,
     callbacks=[tensorboard, saveBestModel])
+    with open('./data/Unet_ResNet-dataset1.pickle', 'wb') as file_pi:
+        pickle.dump(hist1.history, file_pi)
