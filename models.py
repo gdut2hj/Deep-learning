@@ -5,7 +5,7 @@ from tensorflow.python.keras.layers import Conv2D, Conv2DTranspose, MaxPooling2D
 from tensorflow.python.keras.layers import UpSampling2D, LeakyReLU, MaxPool2D, BatchNormalization
 import tensorflow as tf
 from tensorflow.python.keras.optimizers import Adam
-
+import segmentation_models as sm
 
 
 def FCN8(nClasses, input_height=224, input_width=224):
@@ -112,64 +112,6 @@ def FCN8(nClasses, input_height=224, input_width=224):
     model = Model(img_input, o)
 
     return model
-
-def Unet_1(nClasses, input_height, input_width):
-    # 模型来源: https://github.com/zhixuhao/unet/blob/master/model.py
-    IMAGE_ORDERING = "channels_last"
-    assert input_height % 2 == 0
-    assert input_width % 2 == 0
-    img_input = Input(shape=(input_height, input_width, 3))  # Assume 572,572,3
-    
-    conv1 = Conv2D(64, 3, activation = 'relu', padding = 'same', data_format=IMAGE_ORDERING,  kernel_initializer = 'he_normal')(img_input)
-    conv1 = Conv2D(64, 3, activation = 'relu', padding = 'same', data_format=IMAGE_ORDERING,kernel_initializer = 'he_normal')(conv1)
-    pool1 = MaxPooling2D(pool_size=(2, 2), data_format=IMAGE_ORDERING)(conv1)
-    conv2 = Conv2D(128, 3, activation = 'relu', padding = 'same', data_format=IMAGE_ORDERING,kernel_initializer = 'he_normal')(pool1)
-    conv2 = Conv2D(128, 3, activation = 'relu', padding = 'same', data_format=IMAGE_ORDERING,kernel_initializer = 'he_normal')(conv2)
-    pool2 = MaxPooling2D(pool_size=(2, 2), data_format=IMAGE_ORDERING)(conv2)
-    conv3 = Conv2D(256, 3, activation = 'relu', padding = 'same', data_format=IMAGE_ORDERING,kernel_initializer = 'he_normal')(pool2)
-    conv3 = Conv2D(256, 3, activation = 'relu', padding = 'same', data_format=IMAGE_ORDERING,kernel_initializer = 'he_normal')(conv3)
-    pool3 = MaxPooling2D(pool_size=(2, 2), data_format=IMAGE_ORDERING)(conv3)
-    conv4 = Conv2D(512, 3, activation = 'relu', padding = 'same', data_format=IMAGE_ORDERING,kernel_initializer = 'he_normal')(pool3)
-    conv4 = Conv2D(512, 3, activation = 'relu', padding = 'same', data_format=IMAGE_ORDERING,kernel_initializer = 'he_normal')(conv4)
-    drop4 = Dropout(0.5)(conv4)
-    pool4 = MaxPooling2D(pool_size=(2, 2), data_format=IMAGE_ORDERING)(drop4)
-
-    conv5 = Conv2D(1024, 3, activation = 'relu', padding = 'same', data_format=IMAGE_ORDERING,kernel_initializer = 'he_normal')(pool4)
-    conv5 = Conv2D(1024, 3, activation = 'relu', padding = 'same', data_format=IMAGE_ORDERING, kernel_initializer = 'he_normal')(conv5)
-    drop5 = Dropout(0.5)(conv5)
-
-    up6 = Conv2D(512, 2, activation = 'relu', padding = 'same', data_format=IMAGE_ORDERING,kernel_initializer = 'he_normal')(UpSampling2D(size = (2,2))(drop5))
-    merge6 = concatenate([drop4,up6], axis = 3)
-    conv6 = Conv2D(512, 3, activation = 'relu', padding = 'same', data_format=IMAGE_ORDERING,kernel_initializer = 'he_normal')(merge6)
-    conv6 = Conv2D(512, 3, activation = 'relu', padding = 'same', data_format=IMAGE_ORDERING,kernel_initializer = 'he_normal')(conv6)
-
-    # pretrained_weights = '/home/ye/zhouhua/models/vgg16_weights_tf_dim_ordering_tf_kernels_notop.h5'
-    # vgg = Model(img_input, conv6)
-    # vgg.load_weights(pretrained_weights)
-
-    up7 = Conv2D(256, 2, activation = 'relu', padding = 'same', data_format=IMAGE_ORDERING,kernel_initializer = 'he_normal')(UpSampling2D(size = (2,2))(conv6))
-    merge7 = concatenate([conv3,up7], axis = 3)
-    conv7 = Conv2D(256, 3, activation = 'relu', padding = 'same', data_format=IMAGE_ORDERING,kernel_initializer = 'he_normal')(merge7)
-    conv7 = Conv2D(256, 3, activation = 'relu', padding = 'same', data_format=IMAGE_ORDERING,kernel_initializer = 'he_normal')(conv7)
-
-    up8 = Conv2D(128, 2, activation = 'relu', padding = 'same', data_format=IMAGE_ORDERING,kernel_initializer = 'he_normal')(UpSampling2D(size = (2,2))(conv7))
-    merge8 = concatenate([conv2,up8], axis = 3)
-    conv8 = Conv2D(128, 3, activation = 'relu', padding = 'same', data_format=IMAGE_ORDERING,kernel_initializer = 'he_normal')(merge8)
-    conv8 = Conv2D(128, 3, activation = 'relu', padding = 'same', data_format=IMAGE_ORDERING,kernel_initializer = 'he_normal')(conv8)
-
-    up9 = Conv2D(64, 2, activation = 'relu', padding = 'same', data_format=IMAGE_ORDERING,kernel_initializer = 'he_normal')(UpSampling2D(size = (2,2))(conv8))
-    merge9 = concatenate([conv1,up9], axis = 3)
-    conv9 = Conv2D(64, 3, activation = 'relu', padding = 'same', data_format=IMAGE_ORDERING,kernel_initializer = 'he_normal')(merge9)
-    conv9 = Conv2D(64, 3, activation = 'relu', padding = 'same', data_format=IMAGE_ORDERING,kernel_initializer = 'he_normal')(conv9)
-    conv9 = Conv2D(2, 3, activation = 'relu', padding = 'same', data_format=IMAGE_ORDERING,kernel_initializer = 'he_normal')(conv9)
-    conv10 = Conv2D(nClasses, 1, activation = 'sigmoid')(conv9)
-
-    model = Model(img_input, conv10)
-    pretrained_weights = '/home/ye/zhouhua/codes/models/best_weights.hdf5'
-    if(pretrained_weights):
-       	model.load_weights(pretrained_weights)
-    return model
-
 
 def unet_2(pretrained_weights=None, input_size=(224, 224, 3), num_class=12):
     # 模型来源: https://blog.csdn.net/LawenceRay/article/details/97391350
@@ -360,3 +302,5 @@ def Unet_ResNet_model(input_width,input_height, start_neurons=16, DropoutRatio=0
     
     model = Model(input_layer, output_layer)
     return model
+
+def PSPnet()
