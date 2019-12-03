@@ -172,14 +172,13 @@ class dataset1_generator_reader:
             index = self.train_batch_size*self.train_batch_index+i
             img = Image.open(
                 self.dir_img+self.train_file_name_list[index])  # 读取训练数据
-            img = img.resize((self.resize_height, self.resize_width),
-                             Image.NEAREST)         # resize训练数据
+            # img = img.resize((self.resize_height, self.resize_width),Image.NEAREST)  # resize训练数据
             img = np.array(img)
-            np.set_printoptions(threshold=np.inf)
+
             label = self.getSegmentationArr(
                 self.dir_seg+self.train_file_name_list[index], self.n_classes, self.resize_width, self.resize_height)
-            img, label = self.pair_center_crop(
-                img, label, (self.resize_height, self.resize_height), 'channels_last')
+            img, label = self.pair_random_crop(
+                img, label, (self.resize_height, self.resize_width), 'channels_last')
             img = np.float32(img) / 127.5 - 1  # 归一化
             train_imgs[i] = img
             train_labels[i] = label
@@ -203,8 +202,8 @@ class dataset1_generator_reader:
             img = np.array(img)
             label = self.getSegmentationArr(
                 self.dir_seg + self.val_file_name_list[index], self.n_classes, self.resize_width, self.resize_height)
-            img, label = self.pair_center_crop(
-                img, label, (self.resize_height, self.resize_height), 'channels_last')
+            img, label = self.pair_random_crop(
+                img, label, (self.resize_height, self.resize_width), 'channels_last')
             img = np.float32(img) / 127.5 - 1  # 归一化
             val_imgs[i] = img
             val_labels[i] = label
@@ -456,9 +455,10 @@ class dataset1_generator_reader:
         return x, y
 
     def getSegmentationArr(self, path, nClasses,  width, height):
-        seg_labels = np.zeros((height, width, nClasses))
+        
         img = cv2.imread(path, 1)
-        img = cv2.resize(img, (width, height))
+        seg_labels = np.zeros((img.shape[0], img.shape[1], nClasses))
+        #img = cv2.resize(img, (width, height))
         img = img[:, :, 0]
 
         for c in range(nClasses):
