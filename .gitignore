@@ -1,6 +1,6 @@
 .vscode
 ./.gitignore
-./logs/*
+logs
 *.pickle
 *.h5
 *.hdf5
