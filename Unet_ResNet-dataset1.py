@@ -46,7 +46,7 @@ if __name__ == '__main__':
     y_train = val_generator_data(dataGen)
 
     tensorboard = TensorBoard(
-        log_dir='./logs/dataset1/UnetResNet-dataset1-myown-{}'.format(int(time.time())))
+        log_dir='./logs/dataset1/UnetResNet-dataset1-myown-{}'.format(time.strftime('%Y-%m-%d_%H_%M_%S', time.localtime())))
 
     model = Unet_ResNet_model(input_height=224, input_width=224)
     model.summary()

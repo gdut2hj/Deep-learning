@@ -19,7 +19,7 @@ if __name__ == '__main__':
     X, Y = dataGen.readImgaeAndSeg()
     (X_train, y_train), (X_test, y_test) = dataGen.splitDatasets(X, Y, 0.85)
     tensorboard = TensorBoard(
-         log_dir='./logs/FCN/FCN-dataset1-{}'.format(time.strftime('%Y-%m-%d_%H_%M_%S', time.localtime())))
+         log_dir='./logs/dataset1/FCN-dataset1-{}'.format(time.strftime('%Y-%m-%d_%H_%M_%S', time.localtime())))
 
     model = FCN8(nClasses=12,
                  input_height=224,

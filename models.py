@@ -5,7 +5,7 @@ from tensorflow.python.keras.layers import Conv2D, Conv2DTranspose, MaxPooling2D
 from tensorflow.python.keras.layers import UpSampling2D, LeakyReLU, MaxPool2D, BatchNormalization
 import tensorflow as tf
 from tensorflow.python.keras.optimizers import Adam
-import segmentation_models as sm
+
 
 
 def FCN8(nClasses, input_height=224, input_width=224):
@@ -113,7 +113,7 @@ def FCN8(nClasses, input_height=224, input_width=224):
 
     return model
 
-def unet_2(pretrained_weights=None, input_size=(224, 224, 3), num_class=12):
+def Unet(pretrained_weights=None, input_size=(224, 224, 3), num_class=12):
     # 模型来源: https://blog.csdn.net/LawenceRay/article/details/97391350
     '''
     实际效果比FCN好，正宗Unet
