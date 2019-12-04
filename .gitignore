@@ -5,4 +5,4 @@ logs
 *.h5
 *.hdf5
 *.pyc
-
+*.ipynb_checkpoints
