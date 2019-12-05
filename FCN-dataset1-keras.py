@@ -7,8 +7,8 @@ import time
 import os
 import cv2
 import tensorflow as tf
-from tensorflow.python.keras.callbacks import TensorBoard, EarlyStopping, ModelCheckpoint
-from tensorflow.python.keras import optimizers
+from keras.callbacks import TensorBoard, EarlyStopping, ModelCheckpoint
+from keras import optimizers
 from models import FCN8
 from utils.utils import dataset1_Utils, commonUtils
 import pickle
