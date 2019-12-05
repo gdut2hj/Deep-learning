@@ -1,15 +1,17 @@
 
 
-from tensorflow.python.keras.models import Model, load_model
-from tensorflow.python.keras.layers import Conv2D, Conv2DTranspose, MaxPooling2D, Add, Activation, Input, concatenate, Dropout
-from tensorflow.python.keras.layers import UpSampling2D, LeakyReLU, MaxPool2D, BatchNormalization
+from keras.models import Model, load_model
+from keras.layers import Conv2D, Conv2DTranspose, MaxPooling2D, Add, Activation, Input, concatenate, Dropout
+from keras.layers import UpSampling2D, LeakyReLU, MaxPool2D, BatchNormalization
 import tensorflow as tf
-from tensorflow.python.keras.optimizers import Adam
+from keras.optimizers import Adam
+from utils import MaxUnpooling2D,MaxPoolingWithArgmax2D
 
 
 
+VGG_Weights_path = '/home/ye/zhouhua/models/vgg16_weights_tf_dim_ordering_tf_kernels_notop.h5'
 def FCN8(nClasses, input_height=224, input_width=224):
-    VGG_Weights_path = '/home/ye/zhouhua/models/vgg16_weights_tf_dim_ordering_tf_kernels_notop.h5'
+    
     # input_height and width must be devisible by 32 because maxpooling with filter size = (2,2) is operated 5 times,
     # which makes the input_height and width 2^5 = 32 times smaller
     assert input_height % 32 == 0
@@ -303,5 +305,141 @@ def Unet_ResNet_model(input_width,input_height, start_neurons=16, DropoutRatio=0
     model = Model(input_layer, output_layer)
     return model
 
-def PSPnet():
-    pass
+def Segnet(nClasses, input_height, input_width):
+    '''
+    来源:https://github.com/lsh1994/keras-segmentation/blob/master/Models/SegNet.py
+    '''
+    assert input_height % 32 == 0
+    assert input_width % 32 == 0
+
+    img_input = Input(shape=( input_height, input_width,3))
+
+    # Block 1
+    x = Conv2D(64, (3, 3),
+                      activation='relu',
+                      padding='same',
+                      name='block1_conv1')(img_input)
+    x = Conv2D(64, (3, 3),
+                      activation='relu',
+                      padding='same',
+                      name='block1_conv2')(x)
+    x, mask_1 = MaxPoolingWithArgmax2D(name='block1_pool')(x)
+
+    # Block 2
+    x = Conv2D(128, (3, 3),
+                      activation='relu',
+                      padding='same',
+                      name='block2_conv1')(x)
+    x = Conv2D(128, (3, 3),
+                      activation='relu',
+                      padding='same',
+                      name='block2_conv2')(x)
+    x , mask_2 = MaxPoolingWithArgmax2D(name='block2_pool')(x)
+
+    # Block 3
+    x = Conv2D(256, (3, 3),
+                      activation='relu',
+                      padding='same',
+                      name='block3_conv1')(x)
+    x = Conv2D(256, (3, 3),
+                      activation='relu',
+                      padding='same',
+                      name='block3_conv2')(x)
+    x = Conv2D(256, (3, 3),
+                      activation='relu',
+                      padding='same',
+                      name='block3_conv3')(x)
+    x, mask_3 = MaxPoolingWithArgmax2D(name='block3_pool')(x)
+
+    # Block 4
+    x = Conv2D(512, (3, 3),
+                      activation='relu',
+                      padding='same',
+                      name='block4_conv1')(x)
+    x = Conv2D(512, (3, 3),
+                      activation='relu',
+                      padding='same',
+                      name='block4_conv2')(x)
+    x = Conv2D(512, (3, 3),
+                      activation='relu',
+                      padding='same',
+                      name='block4_conv3')(x)
+
+    x, mask_4 = MaxPoolingWithArgmax2D(name='block4_pool')(x)
+
+    # Block 5
+    x = Conv2D(512, (3, 3),
+                      activation='relu',
+                      padding='same',
+                      name='block5_conv1')(x)
+    x = Conv2D(512, (3, 3),
+                      activation='relu',
+                      padding='same',
+                      name='block5_conv2')(x)
+    x = Conv2D(512, (3, 3),
+                      activation='relu',
+                      padding='same',
+                      name='block5_conv3')(x)
+    x, mask_5 = MaxPoolingWithArgmax2D(name='block5_pool')(x)
+
+    Vgg_streamlined=Model(inputs=img_input,outputs=x)
+
+    # 加载vgg16的预训练权重
+    Vgg_streamlined.load_weights(r"E:\Code\PycharmProjects\keras-segmentation\data\vgg16_weights_tf_dim_ordering_tf_kernels_notop.h5")
+
+    # 解码层
+    unpool_1 = MaxUnpooling2D()([x, mask_5])
+    y = Conv2D(512, (3,3), padding="same")(unpool_1)
+    y = BatchNormalization()(y)
+    y = Activation("relu")(y)
+    y = Conv2D(512, (3, 3), padding="same")(y)
+    y = BatchNormalization()(y)
+    y = Activation("relu")(y)
+    y = Conv2D(512, (3, 3), padding="same")(y)
+    y = BatchNormalization()(y)
+    y = Activation("relu")(y)
+
+    unpool_2 = MaxUnpooling2D()([y, mask_4])
+    y = Conv2D(512, (3, 3), padding="same")(unpool_2)
+    y = BatchNormalization()(y)
+    y = Activation("relu")(y)
+    y = Conv2D(512, (3, 3), padding="same")(y)
+    y = BatchNormalization()(y)
+    y = Activation("relu")(y)
+    y = Conv2D(256, (3, 3), padding="same")(y)
+    y = BatchNormalization()(y)
+    y = Activation("relu")(y)
+
+    unpool_3 = MaxUnpooling2D()([y, mask_3])
+    y = Conv2D(256, (3, 3), padding="same")(unpool_3)
+    y = BatchNormalization()(y)
+    y = Activation("relu")(y)
+    y = Conv2D(256, (3, 3), padding="same")(y)
+    y = BatchNormalization()(y)
+    y = Activation("relu")(y)
+    y = Conv2D(128, (3, 3), padding="same")(y)
+    y = BatchNormalization()(y)
+    y = Activation("relu")(y)
+
+    unpool_4 = MaxUnpooling2D()([y, mask_2])
+    y = Conv2D(128, (3, 3), padding="same")(unpool_4)
+    y = BatchNormalization()(y)
+    y = Activation("relu")(y)
+    y = Conv2D(64, (3, 3), padding="same")(y)
+    y = BatchNormalization()(y)
+    y = Activation("relu")(y)
+
+    unpool_5 = MaxUnpooling2D()([y, mask_1])
+    y = Conv2D(64, (3, 3), padding="same")(unpool_5)
+    y = BatchNormalization()(y)
+    y = Activation("relu")(y)
+
+    y = Conv2D(nClasses, (1, 1), padding="same")(y)
+    y = BatchNormalization()(y)
+    y = Activation("relu")(y)
+
+    y = Reshape((-1, nClasses))(y)
+    y = Activation("softmax")(y)
+
+    model=Model(inputs=img_input,outputs=y)
+    return model
