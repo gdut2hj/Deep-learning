@@ -1,18 +1,20 @@
-import numpy as np
 import os
-import cv2
+import random
 import sys
 import warnings
-import tensorflow as tf
-from PIL import Image
-import pandas as pd
-import numpy as np
-from sklearn.utils import shuffle
-from keras import backend as K
-from keras.preprocessing.image import apply_transform, flip_axis, random_channel_shift
-from keras.preprocessing.image import ImageDataGenerator
-from keras.engine import Layer
+
+import cv2
 import keras.backend as K
+import numpy as np
+import pandas as pd
+import tensorflow as tf
+from keras import backend as K
+from keras.engine import Layer
+from keras.preprocessing.image import (ImageDataGenerator, apply_transform,
+                                       flip_axis, random_channel_shift)
+from PIL import Image
+from sklearn.utils import shuffle
+
 
 def transform_matrix_offset_center(matrix, x, y):
     o_x = float(x) / 2 + 0.5
@@ -22,8 +24,9 @@ def transform_matrix_offset_center(matrix, x, y):
     transform_matrix = np.dot(np.dot(offset_matrix, matrix), reset_matrix)
     return transform_matrix
 
+
 class MaxPoolingWithArgmax2D(Layer):
-    
+
     def __init__(
             self,
             pool_size=(2, 2),
@@ -118,6 +121,8 @@ class MaxUnpooling2D(Layer):
             mask_shape[2] * self.up_size[1],
             mask_shape[3]
         )
+
+
 class VOC2012_Utils:
     pass
 
@@ -221,33 +226,39 @@ class dataset1_generator_reader:
 
     def __init__(self, train_batch_size=16,
                  val_batch_size=16,
-                 input_height=224,
-                 input_width=224,
-                 resize_height=224,
-                 resize_width=224,
-                 zoom_range=0.,
+                 crop_height=224,
+                 crop_width=224,
                  nClasses=12,
-                 width_shift_range=0.,
-                 height_shift_range=0.,
-                 rotation_range=0., ):
+                 split_ratio=0.85
+                 ):
         self.dir_data = '/home/ye/zhouhua/datasets/dataset1'
         self.dir_seg = self.dir_data + "/annotations_prepped_train/"
         self.dir_img = self.dir_data + "/images_prepped_train/"
-        self.input_height = input_height
-        self.input_width = input_width
-        self.resize_height = resize_height
-        self.resize_width = resize_width
+        self.crop_height = crop_height
+        self.crop_width = crop_width
         self.n_classes = nClasses
         self.train_batch_size = train_batch_size
         self.val_batch_size = val_batch_size
         self.train_batch_index = 0
         self.val_batch_index = 0
-        self.train_file_name_list = self.load_file_name_list(self.dir_img)
-        self.val_file_name_list = self.load_file_name_list(self.dir_seg)
+        self.train_file_name_list, self.val_file_name_list = self.split_train_validation(
+            self.dir_img, split_ratio)  # 得到训练集和验证集的文件名
         self.n_train_file = len(self.train_file_name_list)  # 训练集的大小
-        self.n_val_file = len(self.val_file_name_list)       # 验证集的大小
+        self.n_val_file = len(self.val_file_name_list)  # 验证集的大小
+        print('train and validation set size are: ', self.n_train_file, self.n_val_file)
         self.n_train_steps_per_epoch = self.n_train_file // self.train_batch_size
         self.n_val_steps_per_epoch = self.n_val_file//self.val_batch_size
+
+    def split_train_validation(self, filePath, split_ratio=0.85, shuffle=True):
+        file_name_list = self.load_file_name_list(filePath)
+        n_total = len(file_name_list)
+        offset = int(n_total * split_ratio)
+        assert n_total != 0 and offset > 0, 'split train validation error'
+        if shuffle:
+            random.shuffle(file_name_list)
+        train_name_list = file_name_list[:offset]
+        val_name_list = file_name_list[offset:]
+        return train_name_list,val_name_list
 
     def load_file_name_list(self, filepath):
         images = os.listdir(filepath)
@@ -256,9 +267,9 @@ class dataset1_generator_reader:
 
     def next_train_batch(self, input_channel=3, output_channel=12):
         train_imgs = np.zeros(
-            (self.train_batch_size, self.resize_height, self.resize_width, input_channel))
+            (self.train_batch_size, self.crop_height, self.crop_width, input_channel))
         train_labels = np.zeros(
-            [self.train_batch_size, self.resize_height, self.resize_width, output_channel])
+            [self.train_batch_size, self.crop_height, self.crop_width, output_channel])
         if self.train_batch_index >= self.n_train_steps_per_epoch:
             # print("next train epoch")
             self.train_batch_index = 0
@@ -272,9 +283,9 @@ class dataset1_generator_reader:
             img = np.array(img)
 
             label = self.getSegmentationArr(
-                self.dir_seg+self.train_file_name_list[index], self.n_classes, self.resize_width, self.resize_height)
+                self.dir_seg+self.train_file_name_list[index], self.n_classes, self.crop_width, self.crop_height)
             img, label = self.pair_random_crop(
-                img, label, (self.resize_height, self.resize_width), 'channels_last')
+                img, label, (self.crop_height, self.crop_width), 'channels_last')
             img = np.float32(img) / 127.5 - 1  # 归一化
             train_imgs[i] = img
             train_labels[i] = label
@@ -283,9 +294,9 @@ class dataset1_generator_reader:
 
     def next_val_batch(self, input_channel=3, output_channel=12):
         val_imgs = np.zeros(
-            (self.val_batch_size, self.resize_height, self.resize_width, input_channel))
+            (self.val_batch_size, self.crop_height, self.crop_width, input_channel))
         val_labels = np.zeros(
-            [self.val_batch_size, self.resize_height, self.resize_width, output_channel])
+            [self.val_batch_size, self.crop_height, self.crop_width, output_channel])
         if self.val_batch_index >= self.n_val_steps_per_epoch:
             #print("next train epoch")
             self.val_batch_index = 0
@@ -297,9 +308,9 @@ class dataset1_generator_reader:
             img = Image.open(self.dir_img+self.val_file_name_list[index])
             img = np.array(img)
             label = self.getSegmentationArr(
-                self.dir_seg + self.val_file_name_list[index], self.n_classes, self.resize_width, self.resize_height)
+                self.dir_seg + self.val_file_name_list[index], self.n_classes, self.crop_width, self.crop_height)
             img, label = self.pair_random_crop(
-                img, label, (self.resize_height, self.resize_width), 'channels_last')
+                img, label, (self.crop_height, self.crop_width), 'channels_last')
             img = np.float32(img) / 127.5 - 1  # 归一化
             val_imgs[i] = img
             val_labels[i] = label
@@ -551,7 +562,7 @@ class dataset1_generator_reader:
         return x, y
 
     def getSegmentationArr(self, path, nClasses,  width, height):
-        
+
         img = cv2.imread(path, 1)
         seg_labels = np.zeros((img.shape[0], img.shape[1], nClasses))
         #img = cv2.resize(img, (width, height))
