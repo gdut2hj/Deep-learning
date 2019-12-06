@@ -35,10 +35,8 @@ if __name__ == '__main__':
     commonUtils.GPUConfig()
     dataGen = dataset1_generator_reader(train_batch_size=16,
                                         val_batch_size=16,
-                                        input_height=224,
-                                        input_width=224,
-                                        resize_height=224,
-                                        resize_width=224,
+                                        crop_height=224,
+                                        crop_width=224,
                                         nClasses=12)
     steps_per_epoch=dataGen.n_train_file//dataGen.train_batch_size  # 22
     validation_steps = dataGen.n_val_file // dataGen.val_batch_size  # 22

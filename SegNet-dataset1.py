@@ -31,10 +31,8 @@ if __name__ == '__main__':
     commonUtils.GPUConfig()
     dataGen = dataset1_generator_reader(train_batch_size=16,
                                         val_batch_size=16,
-                                        input_height=224,
-                                        input_width=224,
-                                        resize_height=224,
-                                        resize_width=224,
+                                        crop_height=224,
+                                        crop_width=224,
                                         nClasses=12)
     steps_per_epoch=dataGen.n_train_file//dataGen.train_batch_size  # 22
     validation_steps = dataGen.n_val_file // dataGen.val_batch_size  # 22
@@ -44,7 +42,7 @@ if __name__ == '__main__':
     tensorboard = TensorBoard(
         log_dir='./logs/dataset1/SegNet-dataset1-{}'.format(time.strftime('%Y-%m-%d_%H_%M_%S', time.localtime())))
 
-    model = Segnet()
+    model = Segnet(nClasses=12, input_height=224, input_width=224)
     model.summary()
    
     sgd = optimizers.SGD(lr=1E-2, decay=5**(-4), momentum=0.9, nesterov=True)
