@@ -2,10 +2,10 @@
 
 from keras.models import Model, load_model
 from keras.layers import Conv2D, Conv2DTranspose, MaxPooling2D, Add, Activation, Input, concatenate, Dropout
-from keras.layers import UpSampling2D, LeakyReLU, MaxPool2D, BatchNormalization
+from keras.layers import UpSampling2D, LeakyReLU, MaxPool2D, BatchNormalization, Reshape
 import tensorflow as tf
 from keras.optimizers import Adam
-from utils import MaxUnpooling2D,MaxPoolingWithArgmax2D
+from utils.utils import MaxUnpooling2D,MaxPoolingWithArgmax2D
 
 
 
@@ -385,7 +385,7 @@ def Segnet(nClasses, input_height, input_width):
     Vgg_streamlined=Model(inputs=img_input,outputs=x)
 
     # 加载vgg16的预训练权重
-    Vgg_streamlined.load_weights(r"E:\Code\PycharmProjects\keras-segmentation\data\vgg16_weights_tf_dim_ordering_tf_kernels_notop.h5")
+    Vgg_streamlined.load_weights(VGG_Weights_path)
 
     # 解码层
     unpool_1 = MaxUnpooling2D()([x, mask_5])
