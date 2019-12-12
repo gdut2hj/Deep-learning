@@ -9,7 +9,7 @@ from utils.utils import MaxUnpooling2D,MaxPoolingWithArgmax2D
 
 
 
-VGG_Weights_path = '/home/ye/zhouhua/models/vgg16_weights_tf_dim_ordering_tf_kernels_notop.h5'
+VGG_Weights_path = '/home/ye/.keras/models/vgg16_weights_tf_dim_ordering_tf_kernels_notop.h5'
 def FCN8(nClasses, input_height=224, input_width=224):
     
     # input_height and width must be devisible by 32 because maxpooling with filter size = (2,2) is operated 5 times,
@@ -438,8 +438,17 @@ def Segnet(nClasses, input_height, input_width):
     y = BatchNormalization()(y)
     y = Activation("relu")(y)
 
-    y = Reshape((-1, nClasses))(y)
-    y = Activation("softmax")(y)
+    y = Conv2D(nClasses,(1, 1), activation = 'softmax')(y)
+    # y = Reshape((-1, nClasses))(y)
+    #y = Activation("softmax")(y)
 
     model=Model(inputs=img_input,outputs=y)
     return model
+
+def deeplabv3_plus():
+    "过于复杂"
+    pass
+
+if __name__=='__main__':
+    model = Segnet(12, 224, 224)
+    print(model.summary())
