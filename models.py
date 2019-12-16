@@ -436,9 +436,9 @@ def Segnet(nClasses, input_height, input_width):
 
     y = Conv2D(nClasses, (1, 1), padding="same")(y)
     y = BatchNormalization()(y)
-    y = Activation("relu")(y)
+    y = Activation("sigmoid")(y)
 
-    y = Conv2D(nClasses,(3, 3), activation = 'sigmoid')(y)
+  
     # y = Reshape((-1, nClasses))(y)
     #y = Activation("softmax")(y)
 
