@@ -11,12 +11,12 @@ from PIL import Image
 import sys
 import pickle
 
-from tensorflow.python.keras import backend as K
-from tensorflow.python.keras.layers import *
-from tensorflow.python.keras import Input
-from tensorflow.python.keras.models import Model
-from tensorflow.python.keras.regularizers import l2
-from tensorflow.python.keras import optimizers
+from keras import backend as K
+from keras.layers import *
+from keras import Input
+from keras.models import Model
+from keras.regularizers import l2
+from keras import optimizers
 
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
 os.environ['CUDA_VISIBLE_DEVICES'] = '1'

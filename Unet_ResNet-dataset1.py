@@ -9,8 +9,8 @@ import time
 import os
 import cv2
 import tensorflow as tf
-from tensorflow.python.keras.callbacks import TensorBoard, EarlyStopping, ModelCheckpoint
-from tensorflow.python.keras import optimizers
+from keras.callbacks import TensorBoard, EarlyStopping, ModelCheckpoint
+from keras import optimizers
 from models import Unet_ResNet_model
 from utils.utils import dataset1_Utils, commonUtils, dataset1_generator_reader
 import pickle
@@ -35,10 +35,8 @@ if __name__ == '__main__':
     commonUtils.GPUConfig()
     dataGen = dataset1_generator_reader(train_batch_size=16,
                                         val_batch_size=16,
-                                        input_height=224,
-                                        input_width=224,
-                                        resize_height=224,
-                                        resize_width=224,
+                                        crop_height=224,
+                                        crop_width=224,
                                         nClasses=12)
     steps_per_epoch=dataGen.n_train_file//dataGen.train_batch_size  # 22
     validation_steps = dataGen.n_val_file // dataGen.val_batch_size  # 22
