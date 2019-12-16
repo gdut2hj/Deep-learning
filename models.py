@@ -438,16 +438,14 @@ def Segnet(nClasses, input_height, input_width):
     y = BatchNormalization()(y)
     y = Activation("relu")(y)
 
-    y = Conv2D(nClasses,(1, 1), activation = 'softmax')(y)
+    y = Conv2D(nClasses,(3, 3), activation = 'sigmoid')(y)
     # y = Reshape((-1, nClasses))(y)
     #y = Activation("softmax")(y)
 
     model=Model(inputs=img_input,outputs=y)
     return model
 
-def deeplabv3_plus():
-    "过于复杂"
-    pass
+
 
 if __name__=='__main__':
     model = Segnet(12, 224, 224)
