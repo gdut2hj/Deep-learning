@@ -1,8 +1,3 @@
-'''
-说明：使用Unet模型训练dataset1，效果比FCN效果差很多.
-可能原因分析：
-1。没有使用预训练模型
-'''
 import random
 import sys
 import time
@@ -24,8 +19,6 @@ if __name__ == '__main__':
     images_data_dir = os.path.join(dataset_dir, 'images_prepped_train/')
     masks_data_dir = os.path.join(dataset_dir, 'annotations_prepped_train/')
     #print(images_data_dir, masks_data_dir)
-
-
     dataGen = dataset1_generator_reader(
         images_data_dir=images_data_dir,
         masks_data_dir=masks_data_dir,
@@ -53,7 +46,7 @@ if __name__ == '__main__':
                   )
     best_weights_filepath = './models/Unet-best_weights.hdf5'
     earlyStopping = EarlyStopping(
-        monitor='val_loss', patience=10, verbose=1, mode='auto')
+        monitor='val_loss', patience=30, verbose=1, mode='auto')
     saveBestModel = ModelCheckpoint(
         best_weights_filepath, monitor='val_loss', verbose=1, save_best_only=True, mode='auto')
     #hist1 = model.fit(X_train, y_train,

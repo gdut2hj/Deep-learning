@@ -1,8 +1,3 @@
-'''
-说明：使用Unet模型训练dataset1，效果比FCN效果差很多.
-可能原因分析：
-1。没有使用预训练模型
-'''
 import random
 import sys
 import time
@@ -19,7 +14,7 @@ import pickle
 
 
 if __name__ == '__main__':
-    commonUtils.GPUConfig(gpu_device='1')
+    commonUtils.GPUConfig(gpu_device='0')
     dataset_dir = os.path.expanduser('~/zhouhua/datasets/dataset1')
     images_data_dir = os.path.join(dataset_dir, 'images_prepped_train/')
     masks_data_dir = os.path.join(dataset_dir, 'annotations_prepped_train/')
@@ -43,7 +38,7 @@ if __name__ == '__main__':
     tensorboard = TensorBoard(
         log_dir='./logs/dataset1/SegNet-dataset1-{}'.format(time.strftime('%Y-%m-%d_%H_%M_%S', time.localtime())))
 
-    model = Segnet()
+    model = Segnet(12, 224, 224)
     model.summary()
 
     sgd = optimizers.SGD(lr=1E-2, decay=5**(-4), momentum=0.9, nesterov=True)
@@ -53,7 +48,7 @@ if __name__ == '__main__':
                   )
     best_weights_filepath = './models/SegNet-best_weights.hdf5'
     earlyStopping = EarlyStopping(
-        monitor='val_loss', patience=10, verbose=1, mode='auto')
+        monitor='val_loss', patience=30, verbose=1, mode='auto')
     saveBestModel = ModelCheckpoint(
         best_weights_filepath, monitor='val_loss', verbose=1, save_best_only=True, mode='auto')
     #hist1 = model.fit(X_train, y_train,

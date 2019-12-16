@@ -1,8 +1,3 @@
-'''
-说明：使用Unet模型训练dataset1，效果比FCN效果差很多.
-可能原因分析：
-1。没有使用预训练模型
-'''
 import random
 import sys
 import time
@@ -38,12 +33,6 @@ if __name__ == '__main__':
     validation_steps = dataGen.n_val_file // dataGen.val_batch_size  # 22
     train_generator = dataGen.train_generator_data()
     validation_generator = dataGen.val_generator_data()
-
-
-
-
- 
-
     tensorboard = TensorBoard(
         log_dir='./logs/dataset1/FCN-dataset1-generator-{}'.format(time.strftime('%Y-%m-%d_%H_%M_%S', time.localtime())))
 
@@ -59,7 +48,7 @@ if __name__ == '__main__':
                   )
     best_weights_filepath = './models/FCN-generator-best_weights.hdf5'
     earlyStopping = EarlyStopping(
-        monitor='val_loss', patience=10, verbose=1, mode='auto')
+        monitor='val_loss', patience=30, verbose=1, mode='auto')
     saveBestModel = ModelCheckpoint(
         best_weights_filepath, monitor='val_loss', verbose=1, save_best_only=True, mode='auto')
 
@@ -70,5 +59,5 @@ if __name__ == '__main__':
                                 epochs=200,
                                 verbose=1,
                                 callbacks=[tensorboard, earlyStopping, saveBestModel])    
-    # with open('./data/FCN-dataset1-generator.pickle', 'wb') as file_pi:
-    #    pickle.dump(hist1.history, file_pi)
+    with open('./data/FCN-dataset1-generator.pickle', 'wb') as file_pi:
+       pickle.dump(hist1.history, file_pi)
