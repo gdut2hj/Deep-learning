@@ -131,7 +131,7 @@ class dataset1_Utils:
     '用于dataset1的预处理类'
 
     def __init__(self, input_height=224, input_width=224, output_height=224, output_width=224, shape=(224, 224), nClasses=12):
-        self.dir_data = '/home/ye/zhouhua/datasets/dataset1'
+        dataset_dir = os.path.abspath('/dataset/dataset1')
         self.dir_seg = self.dir_data + "/annotations_prepped_train/"
         self.dir_img = self.dir_data + "/images_prepped_train/"
         self.input_height = input_height
