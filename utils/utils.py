@@ -175,7 +175,8 @@ class dataset1_Utils:
         print('X.shape,Y.shape: ', X.shape, Y.shape)
         return X, Y
 
-    def splitDatasets(self, X, Y, train_rate=0.85):
+    def splitDatasets(self, X, Y, train_rate=0.85, seed=None):
+        np.random.seed(seed)
         index_train = np.random.choice(X.shape[0], int(
             X.shape[0]*train_rate), replace=False)
         index_test = list(set(range(X.shape[0])) - set(index_train))
@@ -191,7 +192,7 @@ class dataset1_Utils:
 
 class commonUtils:
     @staticmethod
-    def GPUConfig(gpu_memory_fraction=0.95, gpu_device="1"):
+    def GPUConfig(gpu_memory_fraction=0.90, gpu_device="1"):
         warnings.filterwarnings("ignore")
         os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
         config = tf.ConfigProto()
@@ -224,32 +225,56 @@ class commonUtils:
 class dataset1_generator_reader:
     '用于dataset1的预处理类'
 
-    def __init__(self, train_batch_size=16,
+    def __init__(self,
+                images_data_dir='',
+                 masks_data_dir='',
+                 train_batch_size=16,
                  val_batch_size=16,
-                 crop_height=224,
-                 crop_width=224,
+                 crop_size=(224, 224),
                  nClasses=12,
-                 split_ratio=0.85
+                 input_channel=3,
+                 train_val_split_ratio=0.85,
+                 seed=None
                  ):
-        self.dir_data = '/home/ye/zhouhua/datasets/dataset1'
-        self.dir_seg = self.dir_data + "/annotations_prepped_train/"
-        self.dir_img = self.dir_data + "/images_prepped_train/"
-        self.crop_height = crop_height
-        self.crop_width = crop_width
+        self.images_data_dir = images_data_dir
+        self.masks_data_dir = masks_data_dir
+        if images_data_dir == '' or masks_data_dir == '':
+            raise ValueError('Invalid data:', images_data_dir, masks_data_dir,
+                             'images or labels can not be empty!".')
+        self.seed = seed
+        self.crop_height = crop_size[0]
+        self.crop_width = crop_size[1]
         self.n_classes = nClasses
+        self.input_channel = input_channel
         self.train_batch_size = train_batch_size
         self.val_batch_size = val_batch_size
         self.train_batch_index = 0
         self.val_batch_index = 0
         self.train_file_name_list, self.val_file_name_list = self.split_train_validation(
-            self.dir_img, split_ratio)  # 得到训练集和验证集的文件名
+            self.images_data_dir, train_val_split_ratio,seed=self.seed)  # 得到训练集和验证集的文件名
         self.n_train_file = len(self.train_file_name_list)  # 训练集的大小
         self.n_val_file = len(self.val_file_name_list)  # 验证集的大小
-        print('train and validation set size are: ', self.n_train_file, self.n_val_file)
+        print('train and validation set size are: ',
+              self.n_train_file, self.n_val_file)
         self.n_train_steps_per_epoch = self.n_train_file // self.train_batch_size
         self.n_val_steps_per_epoch = self.n_val_file//self.val_batch_size
 
-    def split_train_validation(self, filePath, split_ratio=0.85, shuffle=True):
+    def train_generator_data(self):
+        while True:
+            # 返回VOC reader的next_train_batch()方法，参数为VOC_reader
+            x, y = self.next_train_batch()
+            #print('x.shape: y.shape:', x.shape, y.shape)
+            yield (x, y)
+
+    def val_generator_data(self):
+        while True:
+            x, y = self.next_val_batch()
+            #print('val x.shape: val y.shape:', x.shape, y.shape)
+            yield (x, y)
+
+    def split_train_validation(self, filePath, split_ratio=0.85, shuffle=True, seed=None):
+        if seed is not None:
+            np.random.seed(seed)
         file_name_list = self.load_file_name_list(filePath)
         n_total = len(file_name_list)
         offset = int(n_total * split_ratio)
@@ -258,14 +283,16 @@ class dataset1_generator_reader:
             random.shuffle(file_name_list)
         train_name_list = file_name_list[:offset]
         val_name_list = file_name_list[offset:]
-        return train_name_list,val_name_list
+        return train_name_list, val_name_list
 
     def load_file_name_list(self, filepath):
         images = os.listdir(filepath)
         images.sort()
         return images
 
-    def next_train_batch(self, input_channel=3, output_channel=12):
+    def next_train_batch(self):
+        input_channel = self.input_channel
+        output_channel = self.n_classes
         train_imgs = np.zeros(
             (self.train_batch_size, self.crop_height, self.crop_width, input_channel))
         train_labels = np.zeros(
@@ -278,21 +305,22 @@ class dataset1_generator_reader:
         for i in range(self.train_batch_size):
             index = self.train_batch_size*self.train_batch_index+i
             img = Image.open(
-                self.dir_img+self.train_file_name_list[index])  # 读取训练数据
+                self.images_data_dir+self.train_file_name_list[index])  # 读取训练数据
             # img = img.resize((self.resize_height, self.resize_width),Image.NEAREST)  # resize训练数据
             img = np.array(img)
-
             label = self.getSegmentationArr(
-                self.dir_seg+self.train_file_name_list[index], self.n_classes, self.crop_width, self.crop_height)
+                self.masks_data_dir+self.train_file_name_list[index], self.n_classes, self.crop_width, self.crop_height)
             img, label = self.pair_random_crop(
-                img, label, (self.crop_height, self.crop_width), 'channels_last')
+                img, label, (self.crop_height, self.crop_width), 'channels_last',sync_seed=self.seed)
             img = np.float32(img) / 127.5 - 1  # 归一化
             train_imgs[i] = img
             train_labels[i] = label
         self.train_batch_index += 1
         return train_imgs, train_labels
 
-    def next_val_batch(self, input_channel=3, output_channel=12):
+    def next_val_batch(self):
+        input_channel = self.input_channel
+        output_channel = self.n_classes
         val_imgs = np.zeros(
             (self.val_batch_size, self.crop_height, self.crop_width, input_channel))
         val_labels = np.zeros(
@@ -305,12 +333,12 @@ class dataset1_generator_reader:
 
         for i in range(self.val_batch_size):
             index = self.val_batch_size*self.val_batch_index+i
-            img = Image.open(self.dir_img+self.val_file_name_list[index])
+            img = Image.open(self.images_data_dir+self.val_file_name_list[index])
             img = np.array(img)
             label = self.getSegmentationArr(
-                self.dir_seg + self.val_file_name_list[index], self.n_classes, self.crop_width, self.crop_height)
+                self.masks_data_dir + self.val_file_name_list[index], self.n_classes, self.crop_width, self.crop_height)
             img, label = self.pair_random_crop(
-                img, label, (self.crop_height, self.crop_width), 'channels_last')
+                img, label, (self.crop_height, self.crop_width), 'channels_last',sync_seed=self.seed)
             img = np.float32(img) / 127.5 - 1  # 归一化
             val_imgs[i] = img
             val_labels[i] = label
@@ -347,11 +375,13 @@ class dataset1_generator_reader:
             return x[h_start:h_end, w_start:w_end, :], \
                 y[h_start:h_end, w_start:w_end, :]
 
-    def random_transform(self, x, y):
+    def random_transform(self, x, y, seed=None):
         # x is a single image, so it doesn't have image number at index 0
         img_row_index = 0   # we always use channels_last, so row index is 0, col is 1, channels is 2
         img_col_index = 1
         img_channel_index = 2
+        if seed is not None:
+            np.random.seed(seed)
         if self.crop_mode == 'none':
             crop_size = (x.shape[img_row_index], x.shape[img_col_index])
         else:
@@ -435,9 +465,9 @@ class dataset1_generator_reader:
                 y = flip_axis(y, img_row_index)
 
         if self.crop_mode == 'center':
-            x, y = pair_center_crop(x, y, self.crop_size, self.data_format)
+            x, y = pair_center_crop(x, y, self.crop_size, self.data_format, seed=self.seed)
         elif self.crop_mode == 'random':
-            x, y = pair_random_crop(x, y, self.crop_size, self.data_format)
+            x, y = pair_random_crop(x, y, self.crop_size, self.data_format, seed=self.seed)
 
         # TODO:
         # channel-wise normalization
@@ -445,7 +475,8 @@ class dataset1_generator_reader:
         return x, y
 
     def pair_random_crop(self, x, y, random_crop_size, data_format, sync_seed=None, **kwargs):
-        np.random.seed(sync_seed)
+        if sync_seed is not None:
+            np.random.seed(sync_seed)
         if data_format == 'channels_first':
             h, w = x.shape[1], x.shape[2]
         elif data_format == 'channels_last':
@@ -470,7 +501,9 @@ class dataset1_generator_reader:
     def standardize(self, x):
         pass
 
-    def random_transform(self, x, y, crop_size):
+    def random_transform(self, x, y, crop_size, seed=None):
+        if seed is not None:
+            np.random.seed(seed)
         # x is a single image, so it doesn't have image number at index 0
         img_row_index = self.row_index - 1
         img_col_index = self.col_index - 1
@@ -552,9 +585,9 @@ class dataset1_generator_reader:
                 y = flip_axis(y, img_row_index)
 
         if self.crop_mode == 'center':
-            x, y = pair_center_crop(x, y, self.crop_size, self.data_format)
+            x, y = pair_center_crop(x, y, self.crop_size, self.data_format,)
         elif self.crop_mode == 'random':
-            x, y = pair_random_crop(x, y, self.crop_size, self.data_format)
+            x, y = pair_random_crop(x, y, self.crop_size, self.data_format,sync_seed=seed)
 
         # TODO:
         # channel-wise normalization
