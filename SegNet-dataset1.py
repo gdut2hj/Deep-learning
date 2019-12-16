@@ -6,7 +6,7 @@ import cv2
 import tensorflow as tf
 from keras.callbacks import TensorBoard, EarlyStopping, ModelCheckpoint
 from keras import optimizers
-from models import FCN8, Unet
+from models import Segnet
 from utils.utils import dataset1_Utils, commonUtils, dataset1_generator_reader
 import pickle
 
@@ -14,11 +14,13 @@ import pickle
 
 
 if __name__ == '__main__':
-    commonUtils.GPUConfig(gpu_device='1')
+    commonUtils.GPUConfig(gpu_device='0')
     dataset_dir = os.path.abspath('/dataset/dataset1')
     images_data_dir = os.path.join(dataset_dir, 'images_prepped_train/')
     masks_data_dir = os.path.join(dataset_dir, 'annotations_prepped_train/')
     #print(images_data_dir, masks_data_dir)
+
+
     dataGen = dataset1_generator_reader(
         images_data_dir=images_data_dir,
         masks_data_dir=masks_data_dir,
@@ -34,9 +36,9 @@ if __name__ == '__main__':
     validation_generator = dataGen.val_generator_data()
 
     tensorboard = TensorBoard(
-        log_dir='./logs/dataset1/Unet-dataset1-original-{}'.format(time.strftime('%Y-%m-%d_%H_%M_%S', time.localtime())))
+        log_dir='./logs/dataset1/SegNet-dataset1-{}'.format(time.strftime('%Y-%m-%d_%H_%M_%S', time.localtime())))
 
-    model = Unet()
+    model = Segnet(12, 224, 224)
     model.summary()
 
     sgd = optimizers.SGD(lr=1E-2, decay=5**(-4), momentum=0.9, nesterov=True)
@@ -44,7 +46,7 @@ if __name__ == '__main__':
                   optimizer=sgd,
                   metrics=['accuracy']
                   )
-    best_weights_filepath = './models/Unet-best_weights.hdf5'
+    best_weights_filepath = './models/SegNet-best_weights.hdf5'
     earlyStopping = EarlyStopping(
         monitor='val_loss', patience=30, verbose=1, mode='auto')
     saveBestModel = ModelCheckpoint(
@@ -61,5 +63,5 @@ if __name__ == '__main__':
     validation_steps=validation_steps,
     verbose=1,
     callbacks=[tensorboard, earlyStopping, saveBestModel])
-    with open('./data/Unet-dataset1.pickle', 'wb') as file_pi:
+    with open('./data/SegNet-dataset1.pickle', 'wb') as file_pi:
         pickle.dump(hist1.history, file_pi)

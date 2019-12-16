@@ -1,4 +1,4 @@
-- [语义分割论文笔记](#%e8%af%ad%e4%b9%89%e5%88%86%e5%89%b2%e8%ae%ba%e6%96%87%e7%ac%94%e8%ae%b0)
+- [语义分割综述论文笔记](#%e8%af%ad%e4%b9%89%e5%88%86%e5%89%b2%e7%bb%bc%e8%bf%b0%e8%ae%ba%e6%96%87%e7%ac%94%e8%ae%b0)
 - [Deep Semantic Segmentation of Natural and Medical Images: A Review](#deep-semantic-segmentation-of-natural-and-medical-images-a-review)
     - [FCN](#fcn)
   - [Encoder-decoder编码解码网络](#encoder-decoder%e7%bc%96%e7%a0%81%e8%a7%a3%e7%a0%81%e7%bd%91%e7%bb%9c)
@@ -17,7 +17,7 @@
   - [优化方法上的提升](#%e4%bc%98%e5%8c%96%e6%96%b9%e6%b3%95%e4%b8%8a%e7%9a%84%e6%8f%90%e5%8d%87)
   - [基于重叠度量的损失函数](#%e5%9f%ba%e4%ba%8e%e9%87%8d%e5%8f%a0%e5%ba%a6%e9%87%8f%e7%9a%84%e6%8d%9f%e5%a4%b1%e5%87%bd%e6%95%b0)
 - [总结](#%e6%80%bb%e7%bb%93)
-# 语义分割论文笔记
+# 语义分割综述论文笔记
 # Deep Semantic Segmentation of Natural and Medical Images: A Review
 
 一篇自然和医学图像的深度学习语义分割综述，分为6个方向:深度学习框架、基于数据综合、基于损失函数、基于序列模型、弱监督、多任务方法。
@@ -28,18 +28,18 @@
 
 ## Encoder-decoder编码解码网络
 ### SegNet
-2015年提出。解码器网络是为了映射低分辨率编码器特征到完整的输入分辨率特征图，从而进行像素级分类，创新性是上采样过程中使用了池化索引(pooling indices),如图：
+**2015**年提出。解码器网络是为了映射低分辨率编码器特征到完整的输入分辨率特征图，从而进行像素级分类，创新性是上采样过程中使用了池化索引(pooling indices),如图：
     <div align="center">![SegNet中的池化索引](./image/2019-12-02-22-09-12.png) SegNet中的池化索引 </div>
 
 ### Unet
-Ronneberger等人2015年提出,典型的编码解码网络,一条编码路径和解码路径结合，加入了跨层连接。
+Ronneberger等人**2015**年提出,典型的编码解码网络,一条编码路径和解码路径结合，加入了跨层连接。
     <div align="center">![Unet](./image/2019-12-02-22-47-04.png) Unet结构 </div>
 ### V-net
-Milletari等人2016年提出，加入残差连接，将2D操作替换为3D操作，实现3D分割，并广泛使用语义分割指标：**Dice**
+Milletari等人**2016**年提出，加入残差连接，将2D操作替换为3D操作，实现3D分割，并广泛使用语义分割指标：**Dice**
 
     <div align="center">![Unet](./image/2019-12-02-23-01-58.png) Vnet网络结构 </div>
 ### DenseNet
-Jeugo等人2017年提出，使用了编码解码框架
+Jeugo等人**2017**年提出，使用了编码解码框架,但是通过网络搜索发现,denseNet是一个分类网络啊,并不是分割的网络啊,这是为啥呢!!
 
 ### DeepLabV3+
 2018年，state of the art 在VOC2012上。在deeplabV3的基础加入空洞卷积,编码部分通过收集不同尺度的空洞卷积和金字塔池化加入了多尺度语义信息
@@ -70,7 +70,7 @@ GANs(generative adversarial networks)
 加入多级注意力结构分割MRI图像（Multi-scale guided attention for medical image segmentation,2019)
 
 ## 基于图像分割的对抗训练
-基于对抗训练的CT图像 (PAN:Projective adversarial network for medical image segmentation，2019)
+基于对抗训练的CT图像 (PAN:Projective adversarial network for medical image segmentation，2019)  
 将生成对抗训练用于视网膜图像(Retinal vessel segmentation in fundoscopic images with generative adversarial networks, 2017)
 基于生成对抗网络的FCN分割MRI图像(SegAN: Adversarial network with multi-scale L1 loss for medical image segmentation, 2018)
 
