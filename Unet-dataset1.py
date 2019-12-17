@@ -46,7 +46,7 @@ if __name__ == '__main__':
                   )
     best_weights_filepath = './models/Unet-best_weights.hdf5'
     earlyStopping = EarlyStopping(
-        monitor='val_loss', patience=30, verbose=1, mode='auto')
+        monitor='val_loss', patience=15, verbose=1, mode='auto')
     saveBestModel = ModelCheckpoint(
         best_weights_filepath, monitor='val_loss', verbose=1, save_best_only=True, mode='auto')
     #hist1 = model.fit(X_train, y_train,
