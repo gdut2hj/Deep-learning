@@ -36,7 +36,7 @@ if __name__ == '__main__':
     tensorboard = TensorBoard(
         log_dir='./logs/dataset1/PSPnet-dataset1-original-{}'.format(time.strftime('%Y-%m-%d_%H_%M_%S', time.localtime())))
 
-    model = build_pspnet(nb_classes=12,resnet_layers=50)
+    model = build_pspnet(nb_classes=12, resnet_layers=50, input_shape=(224, 224))
     model.summary()
 
     sgd = optimizers.SGD(lr=1E-2, decay=5**(-4), momentum=0.9, nesterov=True)
@@ -56,10 +56,10 @@ if __name__ == '__main__':
     # model.load_weights(best_weights_filepath)
     hist1 = model.fit_generator(generator=train_generator,
     steps_per_epoch=steps_per_epoch,
-    epochs=500,
+    epochs=300,
     validation_data=validation_generator,
     validation_steps=validation_steps,
-    verbose=1,
+    verbose=2,
     callbacks=[tensorboard, earlyStopping, saveBestModel])
     with open('./data/PSPnet-dataset1.pickle', 'wb') as file_pi:
         pickle.dump(hist1.history, file_pi)

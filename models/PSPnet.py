@@ -194,8 +194,7 @@ def ResNet(inp, layers):
 
 
 def interp_block(prev_layer, level, feature_map_shape, input_shape):
-    # the feature of different size
-    # feature_map_size = input_dim // 8.0   
+    # the feature of different size 
     if input_shape == (473, 473):
         kernel_strides_map = {1: 60,
                               2: 30,
@@ -206,6 +205,11 @@ def interp_block(prev_layer, level, feature_map_shape, input_shape):
                               2: 45,
                               3: 30,
                               6: 15}
+    elif input_shape == (224, 224):
+        kernel_strides_map = {1: 28,  
+                              2: 14,
+                              3: 7,
+                              6: 3}
     else:
         print("Pooling parameters for input shape ",
               input_shape, " are not defined.")
@@ -252,7 +256,7 @@ def build_pyramid_pooling_module(res, input_shape):
 
 
 def build_pspnet(nb_classes, resnet_layers, input_shape, activation='softmax'):
-    """Build PSPNet."""
+    """Build PSPNet.origin code: https://github.com/Vladkryvoruchko/PSPNet-Keras-tensorflow  """
     print("Building a PSPNet based on ResNet %i expecting inputs of shape %s predicting %i classes" % (
         resnet_layers, input_shape, nb_classes))
 
@@ -283,6 +287,6 @@ def build_pspnet(nb_classes, resnet_layers, input_shape, activation='softmax'):
 
 
 if __name__ == '__main__':
-    model = build_pspnet(nb_classes=12, resnet_layers=50, input_shape=(473, 473))
+    model = build_pspnet(nb_classes=12, resnet_layers=50, input_shape=(224, 224))
     print(model.summary())
     
