@@ -46,7 +46,7 @@ if __name__ == '__main__':
                   optimizer=sgd,
                   metrics=['accuracy']
                   )
-    best_weights_filepath = './models/FCN-generator-best_weights.hdf5'
+    best_weights_filepath = './data/FCN-generator-best_weights.hdf5'
     earlyStopping = EarlyStopping(
         monitor='val_loss', patience=30, verbose=1, mode='auto')
     saveBestModel = ModelCheckpoint(

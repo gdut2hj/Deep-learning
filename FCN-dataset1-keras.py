@@ -35,7 +35,7 @@ if __name__ == '__main__':
                   optimizer=sgd,
                   metrics=['accuracy']
                   )
-    best_weights_filepath = './models/FCN_best_weights.hdf5'
+    best_weights_filepath = './data/FCN_best_weights.hdf5'
     earlyStopping=EarlyStopping(monitor='val_loss', patience=10, verbose=1, mode='auto')
     saveBestModel = ModelCheckpoint(best_weights_filepath, monitor='val_loss', verbose=1, save_best_only=True, mode='auto')
     hist1 = model.fit(X_train, y_train,
