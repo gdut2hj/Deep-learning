@@ -11,6 +11,8 @@ from keras.callbacks import TensorBoard, EarlyStopping, ModelCheckpoint
 from keras import optimizers
 from models import FCN8
 from utils.utils import dataset1_Utils, commonUtils
+from models.FCN import FCN8
+from config import VGG_Weights_path
 import pickle
 
 if __name__ == '__main__':
@@ -24,10 +26,10 @@ if __name__ == '__main__':
         pickle.dump(y_test, file_pi)
     tensorboard = TensorBoard(
          log_dir='./logs/dataset1/FCN-dataset1-{}'.format(time.strftime('%Y-%m-%d_%H_%M_%S', time.localtime())))
-
     model = FCN8(nClasses=12,
                  input_height=224,
-                 input_width=224)
+                 input_width=224,
+                 VGG_Weights_path=VGG_Weights_path)
     model.summary()
 
     sgd = optimizers.SGD(lr=1E-2, decay=5**(-4), momentum=0.9, nesterov=True)

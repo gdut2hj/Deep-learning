@@ -10,7 +10,7 @@ from keras.backend import tf as ktf
 
 import tensorflow as tf
 
-#learning_rate = 1e-3  # Layer specific learning rate
+# learning_rate = 1e-3  # Layer specific learning rate
 # Weight decay not implemented
 
 
@@ -22,6 +22,7 @@ class Interp(layers.Layer):
     ''' implement custom layers from keras template.
         need to inheritance Layers.layer, and imlement build, call, compute_output_shape functions
      '''
+
     def __init__(self, new_size, **kwargs):
         self.new_size = new_size
         super(Interp, self).__init__(**kwargs)
@@ -194,7 +195,7 @@ def ResNet(inp, layers):
 
 
 def interp_block(prev_layer, level, feature_map_shape, input_shape):
-    # the feature of different size 
+    # the feature of different size
     if input_shape == (473, 473):
         kernel_strides_map = {1: 60,
                               2: 30,
@@ -206,7 +207,7 @@ def interp_block(prev_layer, level, feature_map_shape, input_shape):
                               3: 30,
                               6: 15}
     elif input_shape == (224, 224):
-        kernel_strides_map = {1: 28,  
+        kernel_strides_map = {1: 28,
                               2: 14,
                               3: 7,
                               6: 3}
@@ -287,6 +288,6 @@ def build_pspnet(nb_classes, resnet_layers, input_shape, activation='softmax'):
 
 
 if __name__ == '__main__':
-    model = build_pspnet(nb_classes=12, resnet_layers=50, input_shape=(224, 224))
+    model = build_pspnet(nb_classes=12, resnet_layers=50,
+                         input_shape=(224, 224))
     print(model.summary())
-    
