@@ -6,7 +6,8 @@ import cv2
 import tensorflow as tf
 from keras.callbacks import TensorBoard, EarlyStopping, ModelCheckpoint
 from keras import optimizers
-from models import Segnet
+from models.SegNet import Segnet
+from config import VGG_Weights_path
 from utils.utils import dataset1_Utils, commonUtils, dataset1_generator_reader
 import pickle
 
@@ -38,7 +39,7 @@ if __name__ == '__main__':
     tensorboard = TensorBoard(
         log_dir='./logs/dataset1/SegNet-dataset1-{}'.format(time.strftime('%Y-%m-%d_%H_%M_%S', time.localtime())))
 
-    model = Segnet(12, 224, 224)
+    model = Segnet(12, 224, 224,VGG_Weights_path)
     model.summary()
 
     sgd = optimizers.SGD(lr=1E-2, decay=5**(-4), momentum=0.9, nesterov=True)

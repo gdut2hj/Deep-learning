@@ -1,6 +1,3 @@
-'''
-说明：训练数据集使用的VOC2012数据集，效果太差，由于数据量太大，也不好掌握参数的调整方法，需要先用较小的数据数据集训练
-'''
 import matplotlib.pyplot as plt
 import os
 import time
@@ -351,4 +348,4 @@ model.compile(loss='categorical_crossentropy',
 hist1 = model.fit(x_train, y_train, validation_split=0.2,
                   batch_size=32, epochs=200, verbose=1)
 with open('./data/FCN-VOC21012-keras.pickle', 'wb') as file_pi:
-        pickle.dump(hist1.history, file_pi)
+    pickle.dump(hist1.history, file_pi)
