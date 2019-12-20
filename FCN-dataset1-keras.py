@@ -1,6 +1,3 @@
-'''
-说明：采用数据集较小的dataset1数据集进行训练，了解参数的调整方法和模型的相关训练方法。
-'''
 import random
 import sys
 import time

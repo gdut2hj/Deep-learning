@@ -1,8 +1,3 @@
-'''
-说明：使用Unet模型训练dataset1，效果比FCN效果差很多.
-可能原因分析：
-1。没有使用预训练模型
-'''
 import random
 import sys
 import time
