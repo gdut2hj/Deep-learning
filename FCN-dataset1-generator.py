@@ -6,9 +6,10 @@ import cv2
 import tensorflow as tf
 from keras.callbacks import TensorBoard, EarlyStopping, ModelCheckpoint
 from keras import optimizers
-from models import FCN8, Unet
+from models.FCN import FCN8
 from keras.preprocessing.image import ImageDataGenerator
 from utils.utils import dataset1_Utils, commonUtils, dataset1_generator_reader
+from config import VGG_Weights_path
 import pickle
 
 
@@ -35,10 +36,10 @@ if __name__ == '__main__':
     validation_generator = dataGen.val_generator_data()
     tensorboard = TensorBoard(
         log_dir='./logs/dataset1/FCN-dataset1-generator-{}'.format(time.strftime('%Y-%m-%d_%H_%M_%S', time.localtime())))
-
     model = FCN8(nClasses=12,
                  input_height=224,
-                 input_width=224)
+                 input_width=224,
+                 VGG_Weights_path=VGG_Weights_path)
     model.summary()
 
     sgd = optimizers.SGD(lr=1E-2, decay=5**(-4), momentum=0.9, nesterov=True)
@@ -46,7 +47,7 @@ if __name__ == '__main__':
                   optimizer=sgd,
                   metrics=['accuracy']
                   )
-    best_weights_filepath = './models/FCN-generator-best_weights.hdf5'
+    best_weights_filepath = './data/FCN-generator-best_weights.hdf5'
     earlyStopping = EarlyStopping(
         monitor='val_loss', patience=30, verbose=1, mode='auto')
     saveBestModel = ModelCheckpoint(
