@@ -5,10 +5,8 @@ import os
 import cv2
 import tensorflow as tf
 
-import keras.backend as K
 from keras.callbacks import TensorBoard, EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
 from keras import optimizers
-from models import FCN8
 from utils.utils import dataset1_Utils, commonUtils
 from models.FCN import FCN8
 from config import VGG_Weights_path
