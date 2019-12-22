@@ -1,6 +1,3 @@
-'''
-说明：采用数据集较小的dataset1数据集进行训练，了解参数的调整方法和模型的相关训练方法。
-'''
 import random
 import sys
 import time
@@ -13,6 +10,8 @@ from keras.callbacks import TensorBoard, EarlyStopping, ModelCheckpoint, ReduceL
 from keras import optimizers
 from models import FCN8
 from utils.utils import dataset1_Utils, commonUtils
+from models.FCN import FCN8
+from config import VGG_Weights_path
 import pickle
 
 if __name__ == '__main__':
@@ -26,10 +25,10 @@ if __name__ == '__main__':
         pickle.dump(y_test, file_pi)
     tensorboard = TensorBoard(
          log_dir='./logs/dataset1/FCN-dataset1-{}'.format(time.strftime('%Y-%m-%d_%H_%M_%S', time.localtime())))
-
     model = FCN8(nClasses=12,
                  input_height=224,
-                 input_width=224)
+                 input_width=224,
+                 VGG_Weights_path=VGG_Weights_path)
     model.summary()
 
     reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=10, verbose=1, mode='auto', epsilon=0.0001, cooldown=0, min_lr=0)
@@ -38,9 +37,11 @@ if __name__ == '__main__':
                   optimizer=sgd,
                   metrics=['accuracy']
                   )
-    
     best_weights_filepath = './models/FCN_best_weights.hdf5'
     earlyStopping=EarlyStopping(monitor='val_loss', patience=30, verbose=1, mode='auto')
+    best_weights_filepath = './data/FCN_best_weights.hdf5'
+    earlyStopping=EarlyStopping(monitor='val_loss', patience=10, verbose=1, mode='auto')
+
     saveBestModel = ModelCheckpoint(best_weights_filepath, monitor='val_loss', verbose=1, save_best_only=True, mode='auto')
     
         

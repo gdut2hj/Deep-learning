@@ -1,8 +1,3 @@
-'''
-说明：使用Unet模型训练dataset1，效果比FCN效果差很多.
-可能原因分析：
-1。没有使用预训练模型
-'''
 import random
 import sys
 import time
@@ -38,7 +33,7 @@ if __name__ == '__main__':
                                         crop_height=224,
                                         crop_width=224,
                                         nClasses=12)
-    steps_per_epoch=dataGen.n_train_file//dataGen.train_batch_size  # 22
+    steps_per_epoch = dataGen.n_train_file//dataGen.train_batch_size  # 22
     validation_steps = dataGen.n_val_file // dataGen.val_batch_size  # 22
     x_train = train_generator_data(dataGen)
     y_train = val_generator_data(dataGen)
@@ -59,17 +54,17 @@ if __name__ == '__main__':
         monitor='val_loss', patience=10, verbose=1, mode='auto')
     saveBestModel = ModelCheckpoint(
         best_weights_filepath, monitor='val_loss', verbose=1, save_best_only=True, mode='auto')
-    #hist1 = model.fit(X_train, y_train,
+    # hist1 = model.fit(X_train, y_train,
     #                  validation_data=(X_test, y_test),
     #                  batch_size=32, epochs=200, verbose=1, callbacks=[tensorboard, earlyStopping, saveBestModel])
     # reload best weights
     # model.load_weights(best_weights_filepath)
     hist1 = model.fit_generator(generator=x_train,
-    steps_per_epoch=steps_per_epoch,
-    epochs=500,
-    validation_data=y_train,
-    validation_steps=validation_steps,
-    verbose=1,
-    callbacks=[tensorboard, saveBestModel])
+                                steps_per_epoch=steps_per_epoch,
+                                epochs=500,
+                                validation_data=y_train,
+                                validation_steps=validation_steps,
+                                verbose=1,
+                                callbacks=[tensorboard, saveBestModel])
     with open('./data/Unet_ResNet-dataset1.pickle', 'wb') as file_pi:
         pickle.dump(hist1.history, file_pi)
