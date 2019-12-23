@@ -2,7 +2,7 @@ import os
 import random
 import sys
 import warnings
-
+from abc import ABCMeta, abstractmethod
 import cv2
 import keras.backend as K
 import numpy as np
@@ -25,11 +25,76 @@ def transform_matrix_offset_center(matrix, x, y):
     return transform_matrix
 
 
+class VOC2012_Utils(Image_Data_Generator):
+    def __init__(self,
+                 dataset_dir='',
+                 train_batch_size=16,
+                 val_batch_size=16,
+                 crop_size=(224, 224),
+                 nClasses=12,
+                 input_channel=3,
+                 train_val_split_ratio=0.85,
+                 crop_mode='None',
+                 rotation_range=0.,
+                 height_shift_range=0.,
+                 width_shift_range=0.,
+                 shear_range=0.,
+                 zoom_range=0.,
+                 zoom_maintain_shape='True',
+                 channel_shift_range=0.,
+                 horizontal_flip=False,
+                 vertical_flip=False,
+                 seed=None,
+                 ):
+        self.dataset_dir = os.path.expanduser(dataset_dir)
+        images_data_dir = os.path.join(self.dataset_dir, 'JPEGImages')
+        masks_data_dir = os.path.join(self.dataset_dir, 'SegmentationClass')
+
+        super(dataset1_generator_reader, self).__init__(images_data_dir,
+                                                        masks_data_dir,
+                                                        train_batch_size,
+                                                        val_batch_size,
+                                                        crop_size,
+                                                        nClasses,
+                                                        input_channel,
+                                                        train_val_split_ratio,
+                                                        crop_mode,
+                                                        rotation_range,
+                                                        height_shift_range,
+                                                        width_shift_range,
+                                                        shear_range,
+                                                        zoom_range,
+                                                        zoom_maintain_shape,
+                                                        channel_shift_range,
+                                                        horizontal_flip,
+                                                        vertical_flip,
+                                                        seed)
+        train_txt_filePath = os.path.join(
+            self.dataset_dir, 'ImageSets/Segmentation/train.txt')
+        val_txt_filePath = os.path.join(
+            self.dataset_dir, 'ImageSets/Segmentation/val.txt')
+        self.train_file_name_list = self.get_file_list(train_txt_filePath)
+        self.val_file_name_list = self.get_file_list(val_txt_filePath)
+        self.n_train_file = len(self.train_file_name_list)  
+        self.n_val_file = len(self.val_file_name_list)  
+        print('train and validation set size are: ',
+              self.n_train_file, self.n_val_file)
+        self.n_train_steps_per_epoch = self.n_train_file // self.train_batch_size
+        self.n_val_steps_per_epoch = self.n_val_file // self.val_batch_size
+
+    def get_file_list(self, filePath):
+        fp = open(filePath)
+        lines = fp.readlines
+        fp.close()
+        return lines
+
+    def next_train_batch(self):
+        pass
 
 
-
-class VOC2012_Utils:
-    pass
+    def next_val_batch(self):
+        pass
+        
 
 
 class dataset1_Utils:
@@ -45,7 +110,6 @@ class dataset1_Utils:
         self.output_width = output_width
         self.shape = shape
         self.n_classes = nClasses
-        pass
 
     def getSegmentationArr(self, path, nClasses,  width, height):
         seg_labels = np.zeros((height, width, nClasses))
@@ -55,7 +119,7 @@ class dataset1_Utils:
 
         for c in range(nClasses):
             seg_labels[:, :, c] = (img == c).astype(int)
-        ##seg_labels = np.reshape(seg_labels, ( width*height,nClasses  ))
+        # seg_labels = np.reshape(seg_labels, ( width*height,nClasses  ))
         return seg_labels
 
     def getImageArr(self, path, width, height):
@@ -127,11 +191,11 @@ class commonUtils:
         print("Mean IoU: {:4.3f}".format(mIoU))
 
 
-class dataset1_generator_reader:
-    '用于dataset1的预处理类'
+class Image_Data_Generator():
+    'General image generator'
 
     def __init__(self,
-                images_data_dir='',
+                 images_data_dir='',
                  masks_data_dir='',
                  train_batch_size=16,
                  val_batch_size=16,
@@ -139,8 +203,19 @@ class dataset1_generator_reader:
                  nClasses=12,
                  input_channel=3,
                  train_val_split_ratio=0.85,
-                 seed=None
+                 crop_mode='None',
+                 rotation_range=0.,
+                 height_shift_range=0.,
+                 width_shift_range=0.,
+                 shear_range=0.,
+                 zoom_range=0.,
+                 zoom_maintain_shape='True',
+                 channel_shift_range=0.,
+                 horizontal_flip=False,
+                 vertical_flip=False,
+                 seed=None,
                  ):
+
         self.images_data_dir = images_data_dir
         self.masks_data_dir = masks_data_dir
         if images_data_dir == '' or masks_data_dir == '':
@@ -155,29 +230,47 @@ class dataset1_generator_reader:
         self.val_batch_size = val_batch_size
         self.train_batch_index = 0
         self.val_batch_index = 0
-        self.train_file_name_list, self.val_file_name_list = self.split_train_validation(
-            self.images_data_dir, train_val_split_ratio,seed=self.seed)  # 得到训练集和验证集的文件名
-        self.n_train_file = len(self.train_file_name_list)  # 训练集的大小
-        self.n_val_file = len(self.val_file_name_list)  # 验证集的大小
-        print('train and validation set size are: ',
-              self.n_train_file, self.n_val_file)
-        self.n_train_steps_per_epoch = self.n_train_file // self.train_batch_size
-        self.n_val_steps_per_epoch = self.n_val_file//self.val_batch_size
+        self.train_file_name_list = [],
+        self.val_file_name_list = [],
+        # number of train dataset       len(self.train_file_name_list)
+        self.n_train_file = 0
+        # number of validation dataset  len(self.val_file_name_list)
+        self.n_val_file = 0
+        self.n_train_steps_per_epoch = 0
+        self.n_val_steps_per_epoch = 0
+        self.crop_mode = crop_mode
+        self.rotation_range = rotation_range
+        self.height_shift_range = height_shift_range
+        self.width_shift_range = width_shift_range
+        self.shear_range = shear_range
+        self.zoom_range = zoom_range
+        self.zoom_maintain_shape = zoom_maintain_shape
+        self.channel_shift_range = channel_shift_range
+        self.horizontal_flip = horizontal_flip
+        self.vertical_flip = vertical_flip
 
     def train_generator_data(self):
         while True:
-            # 返回VOC reader的next_train_batch()方法，参数为VOC_reader
             x, y = self.next_train_batch()
-            #print('x.shape: y.shape:', x.shape, y.shape)
+            # print('x.shape: y.shape:', x.shape, y.shape)
             yield (x, y)
 
     def val_generator_data(self):
         while True:
             x, y = self.next_val_batch()
-            #print('val x.shape: val y.shape:', x.shape, y.shape)
+            # print('val x.shape: val y.shape:', x.shape, y.shape)
             yield (x, y)
 
     def split_train_validation(self, filePath, split_ratio=0.85, shuffle=True, seed=None):
+        '''
+        split dataset to train and validationg dataset.
+
+        # Arguments
+        filePath: dataset filePath.
+        split_ratio: train validation split ratio.
+        shuffle: whether to shuffle file order.
+        seed: numpy random seed.
+        '''
         if seed is not None:
             np.random.seed(seed)
         file_name_list = self.load_file_name_list(filePath)
@@ -195,63 +288,13 @@ class dataset1_generator_reader:
         images.sort()
         return images
 
+    @abstractmethod
     def next_train_batch(self):
-        input_channel = self.input_channel
-        output_channel = self.n_classes
-        train_imgs = np.zeros(
-            (self.train_batch_size, self.crop_height, self.crop_width, input_channel))
-        train_labels = np.zeros(
-            [self.train_batch_size, self.crop_height, self.crop_width, output_channel])
-        if self.train_batch_index >= self.n_train_steps_per_epoch:
-            # print("next train epoch")
-            self.train_batch_index = 0
-        # print('------------------')
-        # print(self.train_batch_index)
-        for i in range(self.train_batch_size):
-            index = self.train_batch_size*self.train_batch_index+i
-            img = Image.open(
-                self.images_data_dir+self.train_file_name_list[index])  # 读取训练数据
-            # img = img.resize((self.resize_height, self.resize_width),Image.NEAREST)  # resize训练数据
-            img = np.array(img)
-            label = self.getSegmentationArr(
-                self.masks_data_dir+self.train_file_name_list[index], self.n_classes, self.crop_width, self.crop_height)
-            img, label = self.pair_random_crop(
-                img, label, (self.crop_height, self.crop_width), 'channels_last',sync_seed=self.seed)
-            img = np.float32(img) / 127.5 - 1  # 归一化
-            train_imgs[i] = img
-            train_labels[i] = label
-        self.train_batch_index += 1
-        return train_imgs, train_labels
+        pass
 
+    @abstractmethod
     def next_val_batch(self):
-        input_channel = self.input_channel
-        output_channel = self.n_classes
-        val_imgs = np.zeros(
-            (self.val_batch_size, self.crop_height, self.crop_width, input_channel))
-        val_labels = np.zeros(
-            [self.val_batch_size, self.crop_height, self.crop_width, output_channel])
-        if self.val_batch_index >= self.n_val_steps_per_epoch:
-            #print("next train epoch")
-            self.val_batch_index = 0
-        # print('------------------')
-        # print(self.val_batch_index)
-
-        for i in range(self.val_batch_size):
-            index = self.val_batch_size*self.val_batch_index+i
-            img = Image.open(self.images_data_dir+self.val_file_name_list[index])
-            img = np.array(img)
-            label = self.getSegmentationArr(
-                self.masks_data_dir + self.val_file_name_list[index], self.n_classes, self.crop_width, self.crop_height)
-            img, label = self.pair_random_crop(
-                img, label, (self.crop_height, self.crop_width), 'channels_last',sync_seed=self.seed)
-            img = np.float32(img) / 127.5 - 1  # 归一化
-            val_imgs[i] = img
-            val_labels[i] = label
-
-        # print('------------------')
-        self.val_batch_index += 1
-
-        return val_imgs, val_labels
+        pass
 
     def make_one_hot(self, x, n):
         one_hot = np.zeros([x.shape[0], x.shape[1], n])  # 256 256 21
@@ -370,9 +413,11 @@ class dataset1_generator_reader:
                 y = flip_axis(y, img_row_index)
 
         if self.crop_mode == 'center':
-            x, y = pair_center_crop(x, y, self.crop_size, self.data_format, seed=self.seed)
+            x, y = pair_center_crop(
+                x, y, self.crop_size, self.data_format, seed=self.seed)
         elif self.crop_mode == 'random':
-            x, y = pair_random_crop(x, y, self.crop_size, self.data_format, seed=self.seed)
+            x, y = pair_random_crop(
+                x, y, self.crop_size, self.data_format, seed=self.seed)
 
         # TODO:
         # channel-wise normalization
@@ -404,7 +449,52 @@ class dataset1_generator_reader:
             return x[h_start:h_end, w_start:w_end, :], y[h_start:h_end, w_start:w_end, :]
 
     def standardize(self, x):
-        pass
+        """Apply the normalization configuration to a batch of inputs.
+
+        # Arguments
+            x: batch of inputs to be normalized.
+
+        # Returns
+            The inputs, normalized.
+        """
+        if self.preprocessing_function:
+            x = self.preprocessing_function(x)
+        if self.rescale:
+            x *= self.rescale
+        # x is a single image, so it doesn't have image number at index 0
+        img_channel_axis = self.channel_axis - 1
+        if self.samplewise_center:
+            x -= np.mean(x, axis=img_channel_axis, keepdims=True)
+        if self.samplewise_std_normalization:
+            x /= (np.std(x, axis=img_channel_axis, keepdims=True) + 1e-7)
+
+        if self.featurewise_center:
+            if self.mean is not None:
+                x -= self.mean
+            else:
+                warnings.warn('This ImageDataGenerator specifies '
+                              '`featurewise_center`, but it hasn\'t'
+                              'been fit on any training data. Fit it '
+                              'first by calling `.fit(numpy_data)`.')
+        if self.featurewise_std_normalization:
+            if self.std is not None:
+                x /= (self.std + 1e-7)
+            else:
+                warnings.warn('This ImageDataGenerator specifies '
+                              '`featurewise_std_normalization`, but it hasn\'t'
+                              'been fit on any training data. Fit it '
+                              'first by calling `.fit(numpy_data)`.')
+        if self.zca_whitening:
+            if self.principal_components is not None:
+                flatx = np.reshape(x, (-1, np.prod(x.shape[-3:])))
+                whitex = np.dot(flatx, self.principal_components)
+                x = np.reshape(whitex, x.shape)
+            else:
+                warnings.warn('This ImageDataGenerator specifies '
+                              '`zca_whitening`, but it hasn\'t'
+                              'been fit on any training data. Fit it '
+                              'first by calling `.fit(numpy_data)`.')
+        return x
 
     def random_transform(self, x, y, crop_size, seed=None):
         if seed is not None:
@@ -492,7 +582,8 @@ class dataset1_generator_reader:
         if self.crop_mode == 'center':
             x, y = pair_center_crop(x, y, self.crop_size, self.data_format,)
         elif self.crop_mode == 'random':
-            x, y = pair_random_crop(x, y, self.crop_size, self.data_format,sync_seed=seed)
+            x, y = pair_random_crop(
+                x, y, self.crop_size, self.data_format, sync_seed=seed)
 
         # TODO:
         # channel-wise normalization
@@ -503,9 +594,124 @@ class dataset1_generator_reader:
 
         img = cv2.imread(path, 1)
         seg_labels = np.zeros((img.shape[0], img.shape[1], nClasses))
-        #img = cv2.resize(img, (width, height))
+        # img = cv2.resize(img, (width, height))
         img = img[:, :, 0]
 
         for c in range(nClasses):
             seg_labels[:, :, c] = (img == c).astype(int)
         return seg_labels
+
+
+class dataset1_generator_reader(Image_Data_Generator):
+    '''
+    generator for dataset1
+    '''
+
+    def __init__(self,
+                 images_data_dir='',
+                 masks_data_dir='',
+                 train_batch_size=16,
+                 val_batch_size=16,
+                 crop_size=(224, 224),
+                 nClasses=12,
+                 input_channel=3,
+                 train_val_split_ratio=0.85,
+                 crop_mode='None',
+                 rotation_range=0.,
+                 height_shift_range=0.,
+                 width_shift_range=0.,
+                 shear_range=0.,
+                 zoom_range=0.,
+                 zoom_maintain_shape='True',
+                 channel_shift_range=0.,
+                 horizontal_flip=False,
+                 vertical_flip=False,
+                 seed=None,
+                 ):
+        super(dataset1_generator_reader, self).__init__(images_data_dir,
+                                                        masks_data_dir,
+                                                        train_batch_size,
+                                                        val_batch_size,
+                                                        crop_size,
+                                                        nClasses,
+                                                        input_channel,
+                                                        train_val_split_ratio,
+                                                        crop_mode,
+                                                        rotation_range,
+                                                        height_shift_range,
+                                                        width_shift_range,
+                                                        shear_range,
+                                                        zoom_range,
+                                                        zoom_maintain_shape,
+                                                        channel_shift_range,
+                                                        horizontal_flip,
+                                                        vertical_flip,
+                                                        seed)
+
+        self.train_file_name_list, self.val_file_name_list = self.split_train_validation(
+            self.images_data_dir, train_val_split_ratio, seed=self.seed)
+        self.n_train_file = len(self.train_file_name_list)  # 训练集的大小
+        self.n_val_file = len(self.val_file_name_list)  # 验证集的大小
+        print('train and validation set size are: ',
+              self.n_train_file, self.n_val_file)
+        self.n_train_steps_per_epoch = self.n_train_file // self.train_batch_size
+        self.n_val_steps_per_epoch = self.n_val_file // self.val_batch_size
+
+    def next_train_batch(self):
+        input_channel = self.input_channel
+        output_channel = self.n_classes
+        train_imgs = np.zeros(
+            (self.train_batch_size, self.crop_height, self.crop_width, input_channel))
+        train_labels = np.zeros(
+            [self.train_batch_size, self.crop_height, self.crop_width, output_channel])
+        if self.train_batch_index >= self.n_train_steps_per_epoch:
+            # print("next train epoch")
+            self.train_batch_index = 0
+        # print('------------------')
+        # print(self.train_batch_index)
+        for i in range(self.train_batch_size):
+            index = self.train_batch_size*self.train_batch_index+i
+            img = Image.open(
+                self.images_data_dir+self.train_file_name_list[index])  # 读取训练数据
+            # img = img.resize((self.resize_height, self.resize_width),Image.NEAREST)  # resize训练数据
+            img = np.array(img)
+            label = self.getSegmentationArr(
+                self.masks_data_dir+self.train_file_name_list[index], self.n_classes, self.crop_width, self.crop_height)
+            img, label = self.pair_random_crop(
+                img, label, (self.crop_height, self.crop_width), 'channels_last', sync_seed=self.seed)
+            img = np.float32(img) / 127.5 - 1  # 归一化
+            train_imgs[i] = img
+            train_labels[i] = label
+        self.train_batch_index += 1
+        return train_imgs, train_labels
+
+    def next_val_batch(self):
+        input_channel = self.input_channel
+        output_channel = self.n_classes
+        val_imgs = np.zeros(
+            (self.val_batch_size, self.crop_height, self.crop_width, input_channel))
+        val_labels = np.zeros(
+            [self.val_batch_size, self.crop_height, self.crop_width, output_channel])
+        if self.val_batch_index >= self.n_val_steps_per_epoch:
+            # print("next train epoch")
+            self.val_batch_index = 0
+        # print('------------------')
+        # print(self.val_batch_index)
+
+        for i in range(self.val_batch_size):
+            index = self.val_batch_size*self.val_batch_index+i
+            img = Image.open(self.images_data_dir +
+                             self.val_file_name_list[index])
+            img = np.array(img)
+            label = self.getSegmentationArr(
+                self.masks_data_dir + self.val_file_name_list[index], self.n_classes, self.crop_width, self.crop_height)
+            img, label = self.pair_random_crop(
+                img, label, (self.crop_height, self.crop_width), 'channels_last', sync_seed=self.seed)
+            img = np.float32(img) / 127.5 - 1  # 归一化
+            val_imgs[i] = img
+            val_labels[i] = label
+
+        # print('------------------')
+        self.val_batch_index += 1
+
+        return val_imgs, val_labels
