@@ -42,8 +42,8 @@ if __name__ == '__main__':
 
     # config training parameters
     num_classes = 21
-    train_batch_size = 16
-    valid_batch_size = 16
+    train_batch_size = 32
+    valid_batch_size = 32
     target_size = (224, 224)
     seed = 20191224
     data_aug_rate = 0
@@ -71,7 +71,7 @@ if __name__ == '__main__':
     validation_steps = num_valid_images // valid_batch_size
 
     tensorboard = TensorBoard(
-        log_dir='./logs/VOC0212/FCN-VOC2012-{}'.format(time.strftime('%Y-%m-%d_%H_%M_%S', time.localtime())))
+        log_dir='./logs/VOC2012/FCN-VOC2012-{}'.format(time.strftime('%Y-%m-%d_%H_%M_%S', time.localtime())))
     model = FCN8(nClasses=21,
                  input_height=224,
                  input_width=224,
@@ -95,6 +95,7 @@ if __name__ == '__main__':
                                 validation_data=valid_generator,
                                 validation_steps=validation_steps,
                                 epochs=500,
+                                verbose=2,
                                 callbacks=[tensorboard, earlyStopping, saveBestModel, reduce_lr])
     with open('./data/FCN-VOC2012.pickle', 'wb') as file_pi:
         pickle.dump(hist1.history, file_pi)
