@@ -8,11 +8,8 @@ import cv2
 import keras.backend as K
 import numpy as np
 import tensorflow as tf
-from abc import ABCMeta, abstractmethod
 from keras.preprocessing.image import apply_transform, flip_axis, random_channel_shift
 from sklearn.utils import shuffle
-
-
 
 
 class dataset1_Utils:
@@ -109,4 +106,60 @@ class commonUtils:
         print("Mean IoU: {:4.3f}".format(mIoU))
 
 
+def get_dataset_info(dataset_name, dataset_path):
+    if dataset_name == 'VOC2012':
+        image_label_names = voc_2012_helper(dataset_path)
+    elif dataset_name == 'dataset1':
+        image_label_names = dataset1_helper(dataset_path)
+    else:
+        # write for your own dataset
+        raise ValueError('Invalid dataset name:', dataset_name,
+                         ' expected dataset1 or VOC2012, or you can implement your own helper function')
+    assert len(image_label_names[0]) == len(image_label_names[1])
+    assert len(image_label_names[2]) == len(image_label_names[3])
 
+    return image_label_names
+
+
+def get_file_list(filePath):
+    fp = open(filePath)
+    lines = list(fp)
+    fp.close()
+    lines = [x.strip() for x in lines]
+    return lines
+
+
+def voc_2012_helper(dataset_path):
+    image_label_names = list()
+
+    images_data_dir = os.path.join(dataset_path, 'JPEGImages/')
+    labels_data_dir = os.path.join(dataset_path, 'SegmentationClass/')
+    train_txt_filePath = os.path.join(
+        dataset_path, 'ImageSets/Segmentation/train.txt')
+    valid_txt_filePath = os.path.join(
+        dataset_path, 'ImageSets/Segmentation/val.txt')
+    train_lines = get_file_list(train_txt_filePath)
+    valid_lines = get_file_list(valid_txt_filePath)
+
+    train_image_names = []
+    train_label_names = []
+    for i, filename in enumerate(train_lines):
+        train_image_names.append(images_data_dir + filename + '.jpg')
+        train_label_names.append(labels_data_dir + filename + '.png')
+    image_label_names.append(train_image_names)
+    image_label_names.append(train_label_names)
+
+    valid_image_names = []
+    valid_label_names = []
+    for i, filename in enumerate(valid_lines):
+        valid_image_names.append(images_data_dir + filename + '.jpg')
+        valid_label_names.append(labels_data_dir + filename + '.png')
+    image_label_names.append(valid_image_names)
+    image_label_names.append(valid_label_names)
+
+    return image_label_names
+
+
+def dataset1_helper(dataset_path):
+    # TO DO:
+    pass

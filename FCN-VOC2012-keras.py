@@ -1,3 +1,11 @@
+'''
+The implementation of PASCAL VOC2012 dataset training for semantic segmentation
+
+Reference:
+    https://github.com/panxiaobai/voc_keras/blob/master/voc_reader.py
+    https://github.com/luyanger1799/amazing-semantic-segmentation
+
+'''
 import random
 import sys
 import time
@@ -7,30 +15,58 @@ import tensorflow as tf
 from keras.callbacks import TensorBoard, EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
 from keras import optimizers
 from models.FCN import FCN8
-from utils.utils import commonUtils
-from utils.VOC2012Utils import VOC2012_Utils
+from utils.utils import commonUtils, get_dataset_info
+from utils.ImageDataGenerator import ImageDataGenerator
 from config import VGG_Weights_path
 import pickle
 
 
 if __name__ == '__main__':
     commonUtils.GPUConfig()
+    dataset_name = 'VOC2012'
     dataset_dir = os.path.abspath('/dataset/VOCdevkit/VOC2012/')
-    images_data_dir = os.path.join(dataset_dir, 'JPEGImages/')
-    labels_data_dir = os.path.join(dataset_dir, 'SegmentationClass/')
-    dataGen = VOC2012_Utils(dataset_dir=dataset_dir,
-                            images_data_dir=images_data_dir,
-                            labels_data_dir=labels_data_dir,
-                            train_batch_size=32,
-                            val_batch_size=32,
-                            nClasses=21,
-                            crop_size=(224, 224),
-                            crop_mode='random',
-                            data_format='channels_last',
-                            zoom_range=[0.5, 2],
-                            label_cval=0,
-                            channel_shift_range=20.
-                            )
+
+    train_gen = ImageDataGenerator(random_crop=True,
+                                   rotation_range=0,
+                                   brightness_range=None,
+                                   zoom_range=[0.5, 2],
+                                   channel_shift_range=0,
+                                   horizontal_flip=True,
+                                   vertical_flip=False)
+
+    valid_gen = ImageDataGenerator()
+    train_image_names, train_label_names, valid_image_names, valid_label_names = get_dataset_info(
+        dataset_name, dataset_dir)
+
+    # config training parameters
+    num_classes = 21
+    train_batch_size = 32
+    valid_batch_size = 32
+    target_size = (224, 224)
+    seed = 20191224
+    data_aug_rate = 0.25
+    num_valid_images = 216  # use 216 images as validation data. 15% of training dataset
+
+    # generator train and valid data
+    train_generator = train_gen.flow(images_list=train_image_names,
+                                     labels_list=train_label_names,
+                                     num_classes=num_classes,
+                                     batch_size=train_batch_size,
+                                     target_size=target_size,
+                                     pad_size=0.,
+                                     shuffle=True,
+                                     seed=seed,
+                                     data_aug_rate=data_aug_rate)
+
+    valid_generator = valid_gen.flow(images_list=valid_image_names,
+                                     labels_list=valid_label_names,
+                                     num_classes=num_classes,
+                                     batch_size=valid_batch_size,
+                                     target_size=target_size,
+                                     pad_size=0.)
+    # training and validation steps
+    steps_per_epoch = len(train_image_names) // train_batch_size
+    validation_steps = num_valid_images // valid_batch_size
 
     tensorboard = TensorBoard(
         log_dir='./logs/dataset1/FCN-VOC2012-{}'.format(time.strftime('%Y-%m-%d_%H_%M_%S', time.localtime())))
@@ -51,13 +87,12 @@ if __name__ == '__main__':
     saveBestModel = ModelCheckpoint(
         best_weights_filepath, monitor='val_loss', verbose=2, save_best_only=True, mode='auto')
     reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=10,
-                                  verbose=1, mode='auto', epsilon=0.0001, cooldown=0, min_lr=1E-5)
-    hist1 = model.fit_generator(generator=dataGen.train_generator_data(),
-                                steps_per_epoch=dataGen.n_train_steps_per_epoch,
-                                validation_data=dataGen.val_generator_data(),
-                                validation_steps=dataGen.n_val_steps_per_epoch,
+                                  verbose=2, mode='auto', epsilon=0.0001, cooldown=0, min_lr=1E-5)
+    hist1 = model.fit_generator(generator=train_generator,
+                                steps_per_epoch=steps_per_epoch,
+                                validation_data=valid_generator,
+                                validation_steps=validation_steps,
                                 epochs=500,
-                                verbose=2,
                                 callbacks=[tensorboard, earlyStopping, saveBestModel, reduce_lr])
     with open('./data/FCN-VOC2012.pickle', 'wb') as file_pi:
         pickle.dump(hist1.history, file_pi)
