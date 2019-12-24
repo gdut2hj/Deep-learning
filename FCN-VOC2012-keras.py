@@ -11,17 +11,19 @@ import sys
 import time
 import os
 import cv2
+import datetime
+import pickle
 import tensorflow as tf
 from keras.callbacks import TensorBoard, EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
 from keras import optimizers
 from models.FCN import FCN8
-from utils.utils import commonUtils, get_dataset_info
+from utils.utils import commonUtils, get_dataset_info, print_time_log
 from utils.ImageDataGenerator import ImageDataGenerator
 from config import VGG_Weights_path
-import pickle
 
 
 if __name__ == '__main__':
+    starttime = datetime.datetime.now()
     commonUtils.GPUConfig()
     dataset_name = 'VOC2012'
     dataset_dir = os.path.abspath('/dataset/VOCdevkit/VOC2012/')
@@ -40,12 +42,12 @@ if __name__ == '__main__':
 
     # config training parameters
     num_classes = 21
-    train_batch_size = 32
-    valid_batch_size = 32
+    train_batch_size = 16
+    valid_batch_size = 16
     target_size = (224, 224)
     seed = 20191224
-    data_aug_rate = 0.25
-    num_valid_images = 216  # use 216 images as validation data. 15% of training dataset
+    data_aug_rate = 0
+    num_valid_images = len(valid_image_names)
 
     # generator train and valid data
     train_generator = train_gen.flow(images_list=train_image_names,
@@ -69,7 +71,7 @@ if __name__ == '__main__':
     validation_steps = num_valid_images // valid_batch_size
 
     tensorboard = TensorBoard(
-        log_dir='./logs/dataset1/FCN-VOC2012-{}'.format(time.strftime('%Y-%m-%d_%H_%M_%S', time.localtime())))
+        log_dir='./logs/VOC0212/FCN-VOC2012-{}'.format(time.strftime('%Y-%m-%d_%H_%M_%S', time.localtime())))
     model = FCN8(nClasses=21,
                  input_height=224,
                  input_width=224,
@@ -96,3 +98,5 @@ if __name__ == '__main__':
                                 callbacks=[tensorboard, earlyStopping, saveBestModel, reduce_lr])
     with open('./data/FCN-VOC2012.pickle', 'wb') as file_pi:
         pickle.dump(hist1.history, file_pi)
+    endtime = datetime.datetime.now()
+    print_time_log(starttime, endtime)
