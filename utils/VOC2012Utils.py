@@ -12,6 +12,7 @@ Reference:
 
 import numpy as np
 import os
+import cv2
 from PIL import Image
 from utils.ImageDataGenerator import Image_Data_Generator
 
@@ -23,9 +24,11 @@ class VOC2012_Utils(Image_Data_Generator):
 
     def __init__(self,
                  dataset_dir='',
+                 images_data_dir='',
+                 labels_data_dir='',
                  train_batch_size=32,
                  val_batch_size=32,
-                 nClasses=12,
+                 nClasses=21,
                  preprocessing_function=None,
                  rescale=None,
                  samplewise_center=False,
@@ -73,9 +76,16 @@ class VOC2012_Utils(Image_Data_Generator):
             self.dataset_dir, 'ImageSets/Segmentation/train.txt')
         val_txt_filePath = os.path.join(
             self.dataset_dir, 'ImageSets/Segmentation/val.txt')
+        self.images_data_dir = images_data_dir
+        self.labels_data_dir = labels_data_dir
         self.seed = seed
         self.train_batch_index = 0
         self.val_batch_index = 0
+        self.train_batch_size = train_batch_size
+        self.val_batch_size = val_batch_size
+        self.input_channel = 3
+        self.crop_height = crop_size[0]
+        self.crop_width = crop_size[1]
         self.nClasses = nClasses
         self.train_file_name_list = self.get_file_list(train_txt_filePath)
         self.val_file_name_list = self.get_file_list(val_txt_filePath)
@@ -88,8 +98,9 @@ class VOC2012_Utils(Image_Data_Generator):
 
     def get_file_list(self, filePath):
         fp = open(filePath)
-        lines = fp.readlines
+        lines = list(fp)
         fp.close()
+        lines = [x.strip() for x in lines]
         return lines
 
     def next_train_batch(self):
@@ -107,14 +118,18 @@ class VOC2012_Utils(Image_Data_Generator):
         for i in range(self.train_batch_size):
             index = self.train_batch_size*self.train_batch_index+i
             img = Image.open(
-                self.images_data_dir+self.train_file_name_list[index])  # 读取训练数据
+                self.images_data_dir+self.train_file_name_list[index] + '.jpg')  # 读取训练数据
             img = np.array(img)
-            label = Image.open(self.images_data_dir +
-                               self.train_file_name_list[index] + '.jpg')
+            label = cv2.imread(self.labels_data_dir +
+                               self.val_file_name_list[index] + '.png')
+            label = np.array(label)
             img, label = self.random_transform(img, label, self.seed)
+            label = label[:, :, 0]
             img = self.standardize(img)
             label[label == 255] = 0
             label = self.one_hot(label, output_channel)
+
+            train_imgs[i] = img
             train_labels[i] = label
         self.train_batch_index += 1
         return train_imgs, train_labels
@@ -135,13 +150,15 @@ class VOC2012_Utils(Image_Data_Generator):
         for i in range(self.val_batch_size):
             index = self.val_batch_size*self.val_batch_index+i
             img = Image.open(self.images_data_dir +
-                             self.val_file_name_list[index])
+                             self.train_file_name_list[index] + '.jpg')
             img = np.array(img)
-            label = Image.open(self.images_data_dir +
+            label = cv2.imread(self.labels_data_dir +
                                self.val_file_name_list[index] + '.png')
+            label = np.array(label)
             # do nothing to validation dataset
             img, label = self.random_transform(img, label, self.seed)
             img = self.standardize(img)
+            label = label[:, :, 0]
             label[label == 255] = 0
             label = self.one_hot(label, output_channel)
 
@@ -155,7 +172,7 @@ class VOC2012_Utils(Image_Data_Generator):
 
     def one_hot(self, label, num_classes):
         if np.ndim(label) == 3:
-        label = np.squeeze(label, axis=-1)
+            label = np.squeeze(label, axis=-1)
         assert np.ndim(label) == 2
 
         heat_map = np.ones(shape=label.shape[0:2] + (num_classes,))

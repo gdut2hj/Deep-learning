@@ -69,13 +69,13 @@ class Image_Data_Generator():
                              'Received arg: ', data_format)
         self.data_format = data_format
         if data_format == 'channels_first':
-            self.channel_axis = 1
-            self.row_axis = 2
-            self.col_axis = 3
-        if data_format == 'channels_last':
-            self.channel_axis = 3
+            self.channel_axis = 0
             self.row_axis = 1
             self.col_axis = 2
+        if data_format == 'channels_last':
+            self.channel_axis = 2
+            self.row_axis = 0
+            self.col_axis = 1
 
         if np.isscalar(zoom_range):         # 判断格式,是否是标量
             self.zoom_range = [1 - zoom_range, 1 + zoom_range]
@@ -172,8 +172,8 @@ class Image_Data_Generator():
         else:
             crop_size = self.crop_size
 
-        assert x.shape[img_row_index] == y.shape[img_row_index] and x.shape[img_col_index] == y.shape[
-            img_col_index], 'DATA ERROR: Different shape of data and label!\ndata shape: %s, label shape: %s' % (str(x.shape), str(y.shape))
+        # assert x.shape[img_row_index] == y.shape[img_row_index] and x.shape[img_col_index] == y.shape[
+        #     img_col_index], 'DATA ERROR: Different shape of data and label!\ndata shape: %s, label shape: %s' % (str(x.shape), str(y.shape))
 
         # use composition of homographies to generate final transform that
         # needs to be applied
