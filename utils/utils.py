@@ -161,5 +161,69 @@ def voc_2012_helper(dataset_path):
 
 
 def dataset1_helper(dataset_path):
-    # TO DO:
-    pass
+    images_data_dir = os.path.join(dataset_path, 'images_prepped_train/')
+    labels_data_dir = os.path.join(dataset_path, 'annotations_prepped_train/')
+    train_name_list, val_name_list = split_train_validation(images_data_dir)
+
+    image_label_names = list()
+    train_image_names = []
+    train_label_names = []
+    for i, filename in enumerate(train_name_list):
+        train_image_names.append(images_data_dir + filename)
+        train_label_names.append(labels_data_dir + filename)
+    image_label_names.append(train_image_names)
+    image_label_names.append(train_label_names)
+
+    valid_image_names = []
+    valid_label_names = []
+    for i, filename in enumerate(val_name_list):
+        valid_image_names.append(images_data_dir + filename)
+        valid_label_names.append(labels_data_dir + filename)
+    image_label_names.append(valid_image_names)
+    image_label_names.append(valid_label_names)
+
+    return image_label_names
+
+
+def split_train_validation(filePath, split_ratio=0.85, shuffle=True, seed=None):
+    '''
+    split dataset to train and validationg dataset.
+
+    # Arguments
+    filePath: dataset filePath.
+    split_ratio: train validation split ratio.
+    shuffle: whether to shuffle file order.
+    seed: numpy random seed.
+    '''
+    if seed is not None:
+        np.random.seed(seed)
+    file_name_list = load_file_name_list(filePath)
+    n_total = len(file_name_list)
+    offset = int(n_total * split_ratio)
+    assert n_total != 0 and offset > 0, 'split train validation error'
+    if shuffle:
+        random.shuffle(file_name_list)
+    train_name_list = file_name_list[:offset]
+    val_name_list = file_name_list[offset:]
+    return train_name_list, val_name_list
+
+
+def load_file_name_list(filepath):
+    images = os.listdir(filepath)
+    images.sort()
+    return images
+
+
+def print_time_log(starttime, endtime):
+    seconds = (endtime - starttime).seconds
+    start = starttime.strftime('%Y-%m-%d %H:%M')
+    end = endtime.strftime('%Y-%m-%d %H:%M')
+
+    second = seconds % 60
+    minutes = seconds // 60
+    hour = seconds // 3600
+
+    timeStr = str(hour)+' hours ' + str(minutes) + \
+        ' mins ' + str(second) + " seconds "
+    print("program start from: " + start +
+          ' to ' + end+', The total running time is: ' + timeStr)
