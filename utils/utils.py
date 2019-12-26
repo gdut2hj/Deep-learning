@@ -78,7 +78,7 @@ class commonUtils:
     @staticmethod
     def GPUConfig(gpu_memory_fraction=0.90, gpu_device="1"):
         warnings.filterwarnings("ignore")
-        os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+        os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   
         config = tf.ConfigProto()
         config.gpu_options.per_process_gpu_memory_fraction = gpu_memory_fraction
         config.gpu_options.visible_device_list = gpu_device
