@@ -118,6 +118,7 @@ def IoU(Yi,y_predi):
     mIoU = np.mean(IoUs)
     print("_________________")
     print("Mean IoU: {:4.3f}".format(mIoU))
+#增加Iou函数.
 IoU(y_testi,y_predi)
 
 def give_color_to_seg_img(seg,n_classes):
