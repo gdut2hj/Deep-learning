@@ -12,7 +12,7 @@ from keras.models import load_model
 from keras.applications.imagenet_utils import preprocess_input
 import keras.backend as K
 import tensorflow as tf
-from models import *
+from models.FCN import FCN8
 
 
 def inference(model_name, weight_file, image_size, image_list, data_dir, label_dir, return_results=True, save_dir=None,
@@ -21,7 +21,7 @@ def inference(model_name, weight_file, image_size, image_list, data_dir, label_d
     current_dir = os.path.dirname(os.path.realpath(__file__))
     # mean_value = np.array([104.00699, 116.66877, 122.67892])
     batch_shape = (1, ) + image_size + (3, )
-    save_path = os.path.join(current_dir, 'Models/'+model_name)
+    save_path = os.path.join(current_dir, 'data/'+model_name)
     model_path = os.path.join(save_path, "model.json")
     checkpoint_path = os.path.join(save_path, weight_file)
     # model_path = os.path.join(current_dir, 'model_weights/fcn_atrous/model_change.hdf5')
@@ -31,8 +31,9 @@ def inference(model_name, weight_file, image_size, image_list, data_dir, label_d
     session = tf.Session(config=config)
     K.set_session(session)
 
-    model = globals()[model_name](
-        batch_shape=batch_shape, input_shape=(512, 512, 3))
+    model = globals()[model_name](nClasses=21,
+                                  input_height=224,
+                                  input_width=224,)
     model.load_weights(checkpoint_path, by_name=True)
 
     model.summary()
@@ -122,7 +123,7 @@ def evaluate(model_name, weight_file, image_size, nb_classes, batch_size, val_fi
              label_suffix='.png',
              data_suffix='.jpg'):
     current_dir = os.path.dirname(os.path.realpath(__file__))
-    save_dir = os.path.join(current_dir, 'Models/'+model_name+'/res/')
+    save_dir = os.path.join(current_dir, 'data/'+model_name+'_res/')
     if os.path.exists(save_dir) == False:
         os.mkdir(save_dir)
     fp = open(val_file_path)
@@ -130,7 +131,7 @@ def evaluate(model_name, weight_file, image_size, nb_classes, batch_size, val_fi
     fp.close()
 
     start_time = time.time()
-    inference(model_name, weight_file, image_size, image_list, data_dir, label_dir, return_results=False, save_dir=save_dir,
+    inference(model_name, weight_file, image_size, image_list, data_dir, label_dir, return_results=False, save_dir=save_dir,  # do not save predict images
               label_suffix=label_suffix, data_suffix=data_suffix)
     duration = time.time() - start_time
     print('{}s used to make predictions.\n'.format(duration))
@@ -147,40 +148,22 @@ def evaluate(model_name, weight_file, image_size, nb_classes, batch_size, val_fi
 
 
 if __name__ == '__main__':
-    # model_name = 'Atrous_DenseNet'
-    model_name = 'AtrousFCN_Resnet50_16s'
-    # model_name = 'DenseNet_FCN'
-    weight_file = 'checkpoint_weights.hdf5'
-    # weight_file = 'model.hdf5'
-    image_size = (512, 512)
+    model_name = 'FCN8'
+    weight_file = 'FCN-VOC2012-best_wights.hdf5'
+    image_size = (224, 224)
     nb_classes = 21
     batch_size = 1
-    dataset = 'VOC2012_BERKELEY'
-    if dataset == 'VOC2012_BERKELEY':
-        # pascal voc + berkeley semantic contours annotations
-        # Data/VOClarge/VOC2012/ImageSets/Segmentation
-        train_file_path = os.path.expanduser(
-            '~/.keras/datasets/VOC2012/combined_imageset_train.txt')
-        # train_file_path = os.path.expanduser('~/.keras/datasets/oneimage/train.txt') #Data/VOClarge/VOC2012/ImageSets/Segmentation
+    dataset = 'VOC2012'
+    if dataset == 'VOC2012':
+
         val_file_path = os.path.expanduser(
-            '~/.keras/datasets/VOC2012/combined_imageset_val.txt')
+            '/dataset/VOCdevkit/VOC2012/ImageSets/Segmentation/val.txt')
         data_dir = os.path.expanduser(
-            '~/.keras/datasets/VOC2012/VOCdevkit/VOC2012/JPEGImages')
+            '/dataset/VOCdevkit/VOC2012/JPEGImages')
         label_dir = os.path.expanduser(
-            '~/.keras/datasets/VOC2012/combined_annotations')
+            '/dataset/VOCdevkit/VOC2012/SegmentationClass')
         label_suffix = '.png'
         data_suffix = '.jpg'
-    if dataset == 'COCO':
-        # Data/VOClarge/VOC2012/ImageSets/Segmentation
-        train_file_path = os.path.expanduser(
-            '~/.keras/datasets/VOC2012/VOCdevkit/VOC2012/ImageSets/Segmentation/train.txt')
-        # train_file_path = os.path.expanduser('~/.keras/datasets/oneimage/train.txt') #Data/VOClarge/VOC2012/ImageSets/Segmentation
-        val_file_path = os.path.expanduser(
-            '~/.keras/datasets/VOC2012/VOCdevkit/VOC2012/ImageSets/Segmentation/val.txt')
-        data_dir = os.path.expanduser(
-            '~/.keras/datasets/VOC2012/VOCdevkit/VOC2012/JPEGImages')
-        label_dir = os.path.expanduser(
-            '~/.keras/datasets/VOC2012/VOCdevkit/VOC2012/SegmentationClass')
-        label_suffix = '.npy'
+
     evaluate(model_name, weight_file, image_size, nb_classes, batch_size, val_file_path, data_dir, label_dir,
              label_suffix=label_suffix, data_suffix=data_suffix)
