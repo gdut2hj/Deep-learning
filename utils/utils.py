@@ -219,9 +219,8 @@ def print_time_log(starttime, endtime):
     start = starttime.strftime('%Y-%m-%d %H:%M')
     end = endtime.strftime('%Y-%m-%d %H:%M')
 
-    second = seconds % 60
-    minutes = seconds // 60
-    hour = seconds // 3600
+    minutes, second = divmod(seconds, 60)
+    hour, minutes = divmod(minutes, 60)
 
     timeStr = str(hour)+' hours ' + str(minutes) + \
         ' mins ' + str(second) + " seconds "
