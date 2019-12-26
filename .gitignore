@@ -1,6 +1,8 @@
 .vscode
 logs/dataset1/*
 !logs/dataset1/.gitkeep
+logs/VOC2012/*
+!logs/VOC2012/.gitkeep
 *.pickle
 *.h5
 *.hdf5
