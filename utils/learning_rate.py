@@ -1,6 +1,8 @@
 import numpy as np
 
+
 #还没用
+
 def step_decay(epoch):
     initial_lrate = 0.01
     drop = 0.1
@@ -10,6 +12,7 @@ def step_decay(epoch):
     return lrate
 
 #已用
+
 def poly_decay(lr=3e-4, max_epochs=100):
     def decay(epoch):
         # initialize the maximum number of epochs, base learning rate,
