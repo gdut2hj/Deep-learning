@@ -14,7 +14,7 @@ import pickle
 
 
 if __name__ == '__main__':
-    commonUtils.GPUConfig()
+    commonUtils.GPUConfig(gpu_device="1")
     dataset_dir = os.path.abspath('/dataset/dataset1')
     images_data_dir = os.path.join(dataset_dir, 'images_prepped_train/')
     masks_data_dir = os.path.join(dataset_dir, 'annotations_prepped_train/')
