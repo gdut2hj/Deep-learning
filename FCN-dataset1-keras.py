@@ -31,6 +31,7 @@ if __name__ == '__main__':
     model.summary()
 
     #reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=10, verbose=1, mode='auto', epsilon=0.0001, cooldown=0, min_lr=0)
+   #还需增加一个学习率策略（step_decay)对比
     learning_rate_scheduler = tf.keras.callbacks.LearningRateScheduler(poly_decay(lr=1e-2, max_epochs=100))
     sgd = optimizers.SGD(lr=1E-2, decay=5**(-4), momentum=0.9, nesterov=True)
     model.compile(loss='categorical_crossentropy',
