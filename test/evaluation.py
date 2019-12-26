@@ -9,12 +9,10 @@ import cv2
 import os
 
 print(os.listdir('.'))
-model_path = './data/PSPnet-best_weights.hdf5'
-history_path = './data/PSPnet-dataset1.pickle'
+model_path = './data/FCN_best_weights.hdf5'
+history_path = './data/FCN-dataset1-keras.pickle'
 X_test_dir = '/dataset/dataset1/images_prepped_test/'
 y_test_dir = '/dataset/dataset1/annotations_prepped_test/'
-# X_test_dir = './data/dataset1-X_test.pickle'
-# y_test_dir = './data/dataset1-y_test.pickle'
 nClasses=12
 crop_width = 224
 crop_height = 224
@@ -77,7 +75,7 @@ def getTestData(test_dir_img, test_dir_seg):
     return X, Y
 
     from models.PSPnet import Interp 
-model = load_model(model_path,custom_objects={'Interp': Interp})
+model = load_model(model_path)
 
 pickle_in = open(history_path,"rb")
 history = pickle.load(pickle_in)
@@ -85,20 +83,18 @@ X_test, y_test = getTestData(X_test_dir, y_test_dir)
 
 print(X_test.shape, y_test.shape)
 
-fnm = X_test[0]
-plt.imshow(fnm)
-plt.show()
+
 
 for key in ['loss', 'val_loss']:
     plt.plot(history[key],label=key)
 plt.legend()
-plt.savefig('./notes/image/PSPnet-dataset1-loss_val_loss.png',bbox_inches = 'tight', dpi=300)
-plt.show()
+plt.savefig('./data/FCN-dataset1-loss_val_loss.png',bbox_inches = 'tight', dpi=300)
+
 for key in ['acc', 'val_acc']:
     plt.plot(history[key],label=key)
 plt.legend()
-plt.savefig('./notes/image/PSPnet-dataset1-acc_val_acc.png',bbox_inches = 'tight', dpi=300)
-plt.show()
+plt.savefig('./data/FCN-dataset1-acc_val_acc.png',bbox_inches = 'tight', dpi=300)
+
 
 y_pred = model.predict(X_test)
 print(y_pred.shape)
@@ -122,8 +118,9 @@ def IoU(Yi,y_predi):
     mIoU = np.mean(IoUs)
     print("_________________")
     print("Mean IoU: {:4.3f}".format(mIoU))
+IoU(y_testi,y_predi)
 
-    def give_color_to_seg_img(seg,n_classes):
+def give_color_to_seg_img(seg,n_classes):
     '''
     seg : (input_width,input_height,3)
     '''
@@ -160,6 +157,4 @@ for i in range(3):
     ax = fig.add_subplot(1,3,3)
     ax.imshow(give_color_to_seg_img(segtest,n_classes))
     ax.set_title("true class")
-    fig.savefig('./notes/image/PSPnet-dataset1-test-seg_example_{}.png'.format(i), bbox_inches = 'tight',dpi=300)
-# plt.savefig('./notes/image/fcn_seg_example.png', dpi=300)
-plt.show()
+    fig.savefig('./data/FCN-dataset1-test-seg_example_{}.png'.format(i), bbox_inches = 'tight',dpi=300)
