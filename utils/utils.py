@@ -1,35 +1,15 @@
+
+
 import os
 import random
 import sys
 import warnings
-
 import cv2
 import keras.backend as K
 import numpy as np
-import pandas as pd
 import tensorflow as tf
-from keras import backend as K
-from keras.engine import Layer
-from keras.preprocessing.image import (ImageDataGenerator, apply_transform,
-                                       flip_axis, random_channel_shift)
-from PIL import Image
+from keras.preprocessing.image import apply_transform, flip_axis, random_channel_shift
 from sklearn.utils import shuffle
-
-
-def transform_matrix_offset_center(matrix, x, y):
-    o_x = float(x) / 2 + 0.5
-    o_y = float(y) / 2 + 0.5
-    offset_matrix = np.array([[1, 0, o_x], [0, 1, o_y], [0, 0, 1]])
-    reset_matrix = np.array([[1, 0, -o_x], [0, 1, -o_y], [0, 0, 1]])
-    transform_matrix = np.dot(np.dot(offset_matrix, matrix), reset_matrix)
-    return transform_matrix
-
-
-
-
-
-class VOC2012_Utils:
-    pass
 
 
 class dataset1_Utils:
@@ -45,7 +25,6 @@ class dataset1_Utils:
         self.output_width = output_width
         self.shape = shape
         self.n_classes = nClasses
-        pass
 
     def getSegmentationArr(self, path, nClasses,  width, height):
         seg_labels = np.zeros((height, width, nClasses))
@@ -55,7 +34,7 @@ class dataset1_Utils:
 
         for c in range(nClasses):
             seg_labels[:, :, c] = (img == c).astype(int)
-        ##seg_labels = np.reshape(seg_labels, ( width*height,nClasses  ))
+        # seg_labels = np.reshape(seg_labels, ( width*height,nClasses  ))
         return seg_labels
 
     def getImageArr(self, path, width, height):
@@ -127,385 +106,123 @@ class commonUtils:
         print("Mean IoU: {:4.3f}".format(mIoU))
 
 
-class dataset1_generator_reader:
-    '用于dataset1的预处理类'
+def get_dataset_info(dataset_name, dataset_path):
+    if dataset_name == 'VOC2012':
+        image_label_names = voc_2012_helper(dataset_path)
+    elif dataset_name == 'dataset1':
+        image_label_names = dataset1_helper(dataset_path)
+    else:
+        # write for your own dataset
+        raise ValueError('Invalid dataset name:', dataset_name,
+                         ' expected dataset1 or VOC2012, or you can implement your own helper function')
+    assert len(image_label_names[0]) == len(image_label_names[1])
+    assert len(image_label_names[2]) == len(image_label_names[3])
 
-    def __init__(self,
-                images_data_dir='',
-                 masks_data_dir='',
-                 train_batch_size=16,
-                 val_batch_size=16,
-                 crop_size=(224, 224),
-                 nClasses=12,
-                 input_channel=3,
-                 train_val_split_ratio=0.85,
-                 seed=None
-                 ):
-        self.images_data_dir = images_data_dir
-        self.masks_data_dir = masks_data_dir
-        if images_data_dir == '' or masks_data_dir == '':
-            raise ValueError('Invalid data:', images_data_dir, masks_data_dir,
-                             'images or labels can not be empty!".')
-        self.seed = seed
-        self.crop_height = crop_size[0]
-        self.crop_width = crop_size[1]
-        self.n_classes = nClasses
-        self.input_channel = input_channel
-        self.train_batch_size = train_batch_size
-        self.val_batch_size = val_batch_size
-        self.train_batch_index = 0
-        self.val_batch_index = 0
-        self.train_file_name_list, self.val_file_name_list = self.split_train_validation(
-            self.images_data_dir, train_val_split_ratio,seed=self.seed)  # 得到训练集和验证集的文件名
-        self.n_train_file = len(self.train_file_name_list)  # 训练集的大小
-        self.n_val_file = len(self.val_file_name_list)  # 验证集的大小
-        print('train and validation set size are: ',
-              self.n_train_file, self.n_val_file)
-        self.n_train_steps_per_epoch = self.n_train_file // self.train_batch_size
-        self.n_val_steps_per_epoch = self.n_val_file//self.val_batch_size
+    return image_label_names
 
-    def train_generator_data(self):
-        while True:
-            # 返回VOC reader的next_train_batch()方法，参数为VOC_reader
-            x, y = self.next_train_batch()
-            #print('x.shape: y.shape:', x.shape, y.shape)
-            yield (x, y)
 
-    def val_generator_data(self):
-        while True:
-            x, y = self.next_val_batch()
-            #print('val x.shape: val y.shape:', x.shape, y.shape)
-            yield (x, y)
+def get_file_list(filePath):
+    fp = open(filePath)
+    lines = list(fp)
+    fp.close()
+    lines = [x.strip() for x in lines]
+    return lines
 
-    def split_train_validation(self, filePath, split_ratio=0.85, shuffle=True, seed=None):
-        if seed is not None:
-            np.random.seed(seed)
-        file_name_list = self.load_file_name_list(filePath)
-        n_total = len(file_name_list)
-        offset = int(n_total * split_ratio)
-        assert n_total != 0 and offset > 0, 'split train validation error'
-        if shuffle:
-            random.shuffle(file_name_list)
-        train_name_list = file_name_list[:offset]
-        val_name_list = file_name_list[offset:]
-        return train_name_list, val_name_list
 
-    def load_file_name_list(self, filepath):
-        images = os.listdir(filepath)
-        images.sort()
-        return images
+def voc_2012_helper(dataset_path):
+    image_label_names = list()
 
-    def next_train_batch(self):
-        input_channel = self.input_channel
-        output_channel = self.n_classes
-        train_imgs = np.zeros(
-            (self.train_batch_size, self.crop_height, self.crop_width, input_channel))
-        train_labels = np.zeros(
-            [self.train_batch_size, self.crop_height, self.crop_width, output_channel])
-        if self.train_batch_index >= self.n_train_steps_per_epoch:
-            # print("next train epoch")
-            self.train_batch_index = 0
-        # print('------------------')
-        # print(self.train_batch_index)
-        for i in range(self.train_batch_size):
-            index = self.train_batch_size*self.train_batch_index+i
-            img = Image.open(
-                self.images_data_dir+self.train_file_name_list[index])  # 读取训练数据
-            # img = img.resize((self.resize_height, self.resize_width),Image.NEAREST)  # resize训练数据
-            img = np.array(img)
-            label = self.getSegmentationArr(
-                self.masks_data_dir+self.train_file_name_list[index], self.n_classes, self.crop_width, self.crop_height)
-            img, label = self.pair_random_crop(
-                img, label, (self.crop_height, self.crop_width), 'channels_last',sync_seed=self.seed)
-            img = np.float32(img) / 127.5 - 1  # 归一化
-            train_imgs[i] = img
-            train_labels[i] = label
-        self.train_batch_index += 1
-        return train_imgs, train_labels
+    images_data_dir = os.path.join(dataset_path, 'JPEGImages/')
+    labels_data_dir = os.path.join(dataset_path, 'SegmentationClass/')
+    train_txt_filePath = os.path.join(
+        dataset_path, 'ImageSets/Segmentation/train.txt')
+    valid_txt_filePath = os.path.join(
+        dataset_path, 'ImageSets/Segmentation/val.txt')
+    train_lines = get_file_list(train_txt_filePath)
+    valid_lines = get_file_list(valid_txt_filePath)
 
-    def next_val_batch(self):
-        input_channel = self.input_channel
-        output_channel = self.n_classes
-        val_imgs = np.zeros(
-            (self.val_batch_size, self.crop_height, self.crop_width, input_channel))
-        val_labels = np.zeros(
-            [self.val_batch_size, self.crop_height, self.crop_width, output_channel])
-        if self.val_batch_index >= self.n_val_steps_per_epoch:
-            #print("next train epoch")
-            self.val_batch_index = 0
-        # print('------------------')
-        # print(self.val_batch_index)
+    train_image_names = []
+    train_label_names = []
+    for i, filename in enumerate(train_lines):
+        train_image_names.append(images_data_dir + filename + '.jpg')
+        train_label_names.append(labels_data_dir + filename + '.png')
+    image_label_names.append(train_image_names)
+    image_label_names.append(train_label_names)
 
-        for i in range(self.val_batch_size):
-            index = self.val_batch_size*self.val_batch_index+i
-            img = Image.open(self.images_data_dir+self.val_file_name_list[index])
-            img = np.array(img)
-            label = self.getSegmentationArr(
-                self.masks_data_dir + self.val_file_name_list[index], self.n_classes, self.crop_width, self.crop_height)
-            img, label = self.pair_random_crop(
-                img, label, (self.crop_height, self.crop_width), 'channels_last',sync_seed=self.seed)
-            img = np.float32(img) / 127.5 - 1  # 归一化
-            val_imgs[i] = img
-            val_labels[i] = label
+    valid_image_names = []
+    valid_label_names = []
+    for i, filename in enumerate(valid_lines):
+        valid_image_names.append(images_data_dir + filename + '.jpg')
+        valid_label_names.append(labels_data_dir + filename + '.png')
+    image_label_names.append(valid_image_names)
+    image_label_names.append(valid_label_names)
 
-        # print('------------------')
-        self.val_batch_index += 1
+    return image_label_names
 
-        return val_imgs, val_labels
 
-    def make_one_hot(self, x, n):
-        one_hot = np.zeros([x.shape[0], x.shape[1], n])  # 256 256 21
-        for i in range(x.shape[0]):  # 256
-            for j in range(x.shape[1]):  # 256
-                one_hot[i, j, x[i, j]] = 1
-            return one_hot
+def dataset1_helper(dataset_path):
+    images_data_dir = os.path.join(dataset_path, 'images_prepped_train/')
+    labels_data_dir = os.path.join(dataset_path, 'annotations_prepped_train/')
+    train_name_list, val_name_list = split_train_validation(images_data_dir)
 
-    def pair_center_crop(self, x, y, center_crop_size, data_format, **kwargs):
-        if data_format == 'channels_first':
-            centerh, centerw = x.shape[1] // 2, x.shape[2] // 2
-        elif data_format == 'channels_last':
-            centerh, centerw = x.shape[0] // 2, x.shape[1] // 2   # 获取中心点
-        # 获取剪裁后的中心点 channels_last
-        lh, lw = center_crop_size[0] // 2, center_crop_size[1] // 2
-        rh, rw = center_crop_size[0] - \
-            lh, center_crop_size[1] - lw   # 得到剪裁后的中心点距离边缘的长度
+    image_label_names = list()
+    train_image_names = []
+    train_label_names = []
+    for i, filename in enumerate(train_name_list):
+        train_image_names.append(images_data_dir + filename)
+        train_label_names.append(labels_data_dir + filename)
+    image_label_names.append(train_image_names)
+    image_label_names.append(train_label_names)
 
-        h_start, h_end = centerh - lh, centerh + rh
-        # 计算原图从中心点开始裁剪的长和宽channels_last
-        w_start, w_end = centerw - lw, centerw + rw
-        if data_format == 'channels_first':
-            return x[:, h_start:h_end, w_start:w_end], \
-                y[:, h_start:h_end, w_start:w_end]
-        elif data_format == 'channels_last':                        # 返回剪裁后的图像
-            return x[h_start:h_end, w_start:w_end, :], \
-                y[h_start:h_end, w_start:w_end, :]
+    valid_image_names = []
+    valid_label_names = []
+    for i, filename in enumerate(val_name_list):
+        valid_image_names.append(images_data_dir + filename)
+        valid_label_names.append(labels_data_dir + filename)
+    image_label_names.append(valid_image_names)
+    image_label_names.append(valid_label_names)
 
-    def random_transform(self, x, y, seed=None):
-        # x is a single image, so it doesn't have image number at index 0
-        img_row_index = 0   # we always use channels_last, so row index is 0, col is 1, channels is 2
-        img_col_index = 1
-        img_channel_index = 2
-        if seed is not None:
-            np.random.seed(seed)
-        if self.crop_mode == 'none':
-            crop_size = (x.shape[img_row_index], x.shape[img_col_index])
-        else:
-            crop_size = self.crop_size
+    return image_label_names
 
-        assert x.shape[img_row_index] == y.shape[img_row_index] and x.shape[img_col_index] == y.shape[
-            img_col_index], 'DATA ERROR: Different shape of data and label!\ndata shape: %s, label shape: %s' % (str(x.shape), str(y.shape))
 
-        # use composition of homographies to generate final transform that
-        # needs to be applied
-        if self.rotation_range:
-            theta = np.pi / 180 * \
-                np.random.uniform(-self.rotation_range,
-                                  self.rotation_range)  # angle convert to radian
-        else:
-            theta = 0
-        rotation_matrix = np.array([[np.cos(theta), -np.sin(theta), 0],     # get rotation matrix
-                                    [np.sin(theta), np.cos(theta), 0],
-                                    [0, 0, 1]])
-        if self.height_shift_range:
-            # * x.shape[img_row_index]
-            tx = np.random.uniform(-self.height_shift_range,
-                                   self.height_shift_range) * crop_size[0]
-        else:
-            tx = 0
+def split_train_validation(filePath, split_ratio=0.85, shuffle=True, seed=None):
+    '''
+    split dataset to train and validationg dataset.
 
-        if self.width_shift_range:
-            # * x.shape[img_col_index]
-            ty = np.random.uniform(-self.width_shift_range,
-                                   self.width_shift_range) * crop_size[1]
-        else:
-            ty = 0
+    # Arguments
+    filePath: dataset filePath.
+    split_ratio: train validation split ratio.
+    shuffle: whether to shuffle file order.
+    seed: numpy random seed.
+    '''
+    if seed is not None:
+        np.random.seed(seed)
+    file_name_list = load_file_name_list(filePath)
+    n_total = len(file_name_list)
+    offset = int(n_total * split_ratio)
+    assert n_total != 0 and offset > 0, 'split train validation error'
+    if shuffle:
+        random.shuffle(file_name_list)
+    train_name_list = file_name_list[:offset]
+    val_name_list = file_name_list[offset:]
+    return train_name_list, val_name_list
 
-        translation_matrix = np.array([[1, 0, tx],
-                                       [0, 1, ty],
-                                       [0, 0, 1]])
-        if self.shear_range:
-            shear = np.random.uniform(-self.shear_range, self.shear_range)
-        else:
-            shear = 0
-        shear_matrix = np.array([[1, -np.sin(shear), 0],
-                                 [0, np.cos(shear), 0],
-                                 [0, 0, 1]])
 
-        if self.zoom_range[0] == 1 and self.zoom_range[1] == 1:
-            zx, zy = 1, 1
-        else:
-            zx, zy = np.random.uniform(
-                self.zoom_range[0], self.zoom_range[1], 2)
-        if self.zoom_maintain_shape:
-            zy = zx
-        zoom_matrix = np.array([[zx, 0, 0],
-                                [0, zy, 0],
-                                [0, 0, 1]])
+def load_file_name_list(filepath):
+    images = os.listdir(filepath)
+    images.sort()
+    return images
 
-        transform_matrix = np.dot(
-            np.dot(np.dot(rotation_matrix, translation_matrix), shear_matrix), zoom_matrix)
 
-        h, w = x.shape[img_row_index], x.shape[img_col_index]
+def print_time_log(starttime, endtime):
+    seconds = (endtime - starttime).seconds
+    start = starttime.strftime('%Y-%m-%d %H:%M')
+    end = endtime.strftime('%Y-%m-%d %H:%M')
 
-        transform_matrix = transform_matrix_offset_center(
-            transform_matrix, h, w)
+    minutes, second = divmod(seconds, 60)
+    hour, minutes = divmod(minutes, 60)
 
-        x = apply_transform(x, transform_matrix, img_channel_index,
-                            fill_mode=self.fill_mode, cval=self.cval)
-        y = apply_transform(y, transform_matrix, img_channel_index,
-                            fill_mode='constant', cval=self.label_cval)
-
-        if self.channel_shift_range != 0:
-            x = random_channel_shift(
-                x, self.channel_shift_range, img_channel_index)
-
-        if self.horizontal_flip:
-            if np.random.random() < 0.5:
-                x = flip_axis(x, img_col_index)
-                y = flip_axis(y, img_col_index)
-
-        if self.vertical_flip:
-            if np.random.random() < 0.5:
-                x = flip_axis(x, img_row_index)
-                y = flip_axis(y, img_row_index)
-
-        if self.crop_mode == 'center':
-            x, y = pair_center_crop(x, y, self.crop_size, self.data_format, seed=self.seed)
-        elif self.crop_mode == 'random':
-            x, y = pair_random_crop(x, y, self.crop_size, self.data_format, seed=self.seed)
-
-        # TODO:
-        # channel-wise normalization
-        # barrel/fisheye
-        return x, y
-
-    def pair_random_crop(self, x, y, random_crop_size, data_format, sync_seed=None, **kwargs):
-        if sync_seed is not None:
-            np.random.seed(sync_seed)
-        if data_format == 'channels_first':
-            h, w = x.shape[1], x.shape[2]
-        elif data_format == 'channels_last':
-            h, w = x.shape[0], x.shape[1]           # get height and width
-        # get difference from origin height and croped image height
-        rangeh = (h - random_crop_size[0]) // 2
-        rangew = (w - random_crop_size[1]) // 2
-        offseth = 0 if rangeh == 0 else np.random.randint(
-            rangeh)  # get random offset height and width
-        offsetw = 0 if rangew == 0 else np.random.randint(rangew)
-
-        h_start, h_end = offseth, offseth + \
-            random_crop_size[0]     # height + random crop size
-        w_start, w_end = offsetw, offsetw + \
-            random_crop_size[1]  # width + random crop size
-
-        if data_format == 'channels_first':
-            return x[:, h_start:h_end, w_start:w_end], y[:, h_start:h_end, h_start:h_end]
-        elif data_format == 'channels_last':
-            return x[h_start:h_end, w_start:w_end, :], y[h_start:h_end, w_start:w_end, :]
-
-    def standardize(self, x):
-        pass
-
-    def random_transform(self, x, y, crop_size, seed=None):
-        if seed is not None:
-            np.random.seed(seed)
-        # x is a single image, so it doesn't have image number at index 0
-        img_row_index = self.row_index - 1
-        img_col_index = self.col_index - 1
-        img_channel_index = self.channel_index - 1
-
-        assert x.shape[img_row_index] == y.shape[img_row_index] and x.shape[img_col_index] == y.shape[
-            img_col_index], 'DATA ERROR: Different shape of data and label!\ndata shape: %s, label shape: %s' % (str(x.shape), str(y.shape))
-
-        # use composition of homographies to generate final transform that
-        # needs to be applied
-        if self.rotation_range:
-            theta = np.pi / 180 * \
-                np.random.uniform(-self.rotation_range, self.rotation_range)
-        else:
-            theta = 0
-        rotation_matrix = np.array([[np.cos(theta), -np.sin(theta), 0],
-                                    [np.sin(theta), np.cos(theta), 0],
-                                    [0, 0, 1]])
-        if self.height_shift_range:
-            # * x.shape[img_row_index]
-            tx = np.random.uniform(-self.height_shift_range,
-                                   self.height_shift_range) * crop_size[0]
-        else:
-            tx = 0
-
-        if self.width_shift_range:
-            # * x.shape[img_col_index]
-            ty = np.random.uniform(-self.width_shift_range,
-                                   self.width_shift_range) * crop_size[1]
-        else:
-            ty = 0
-
-        translation_matrix = np.array([[1, 0, tx],
-                                       [0, 1, ty],
-                                       [0, 0, 1]])
-        if self.shear_range:
-            shear = np.random.uniform(-self.shear_range, self.shear_range)
-        else:
-            shear = 0
-        shear_matrix = np.array([[1, -np.sin(shear), 0],
-                                 [0, np.cos(shear), 0],
-                                 [0, 0, 1]])
-
-        if self.zoom_range[0] == 1 and self.zoom_range[1] == 1:
-            zx, zy = 1, 1
-        else:
-            zx, zy = np.random.uniform(
-                self.zoom_range[0], self.zoom_range[1], 2)
-        if self.zoom_maintain_shape:
-            zy = zx
-        zoom_matrix = np.array([[zx, 0, 0],
-                                [0, zy, 0],
-                                [0, 0, 1]])
-
-        transform_matrix = np.dot(
-            np.dot(np.dot(rotation_matrix, translation_matrix), shear_matrix), zoom_matrix)
-
-        h, w = x.shape[img_row_index], x.shape[img_col_index]
-        transform_matrix = transform_matrix_offset_center(
-            transform_matrix, h, w)
-
-        x = apply_transform(x, transform_matrix, img_channel_index,
-                            fill_mode=self.fill_mode, cval=self.cval)
-        y = apply_transform(y, transform_matrix, img_channel_index,
-                            fill_mode='constant', cval=self.label_cval)
-
-        if self.channel_shift_range != 0:
-            x = random_channel_shift(
-                x, self.channel_shift_range, img_channel_index)
-
-        if self.horizontal_flip:
-            if np.random.random() < 0.5:
-                x = flip_axis(x, img_col_index)
-                y = flip_axis(y, img_col_index)
-
-        if self.vertical_flip:
-            if np.random.random() < 0.5:
-                x = flip_axis(x, img_row_index)
-                y = flip_axis(y, img_row_index)
-
-        if self.crop_mode == 'center':
-            x, y = pair_center_crop(x, y, self.crop_size, self.data_format,)
-        elif self.crop_mode == 'random':
-            x, y = pair_random_crop(x, y, self.crop_size, self.data_format,sync_seed=seed)
-
-        # TODO:
-        # channel-wise normalization
-        # barrel/fisheye
-        return x, y
-
-    def getSegmentationArr(self, path, nClasses,  width, height):
-
-        img = cv2.imread(path, 1)
-        seg_labels = np.zeros((img.shape[0], img.shape[1], nClasses))
-        #img = cv2.resize(img, (width, height))
-        img = img[:, :, 0]
-
-        for c in range(nClasses):
-            seg_labels[:, :, c] = (img == c).astype(int)
-        return seg_labels
+    timeStr = str(hour)+' hours ' + str(minutes) + \
+        ' mins ' + str(second) + " seconds "
+    print("program start from: " + start +
+          ' to ' + end+', The total running time is: ' + timeStr)

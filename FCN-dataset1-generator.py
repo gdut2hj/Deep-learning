@@ -1,41 +1,73 @@
+'''
+The implementation of  dataset1 training for semantic segmentation
+
+'''
 import random
 import sys
 import time
 import os
 import cv2
+import datetime
+import pickle
 import tensorflow as tf
-from keras.callbacks import TensorBoard, EarlyStopping, ModelCheckpoint
+from keras.callbacks import TensorBoard, EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
 from keras import optimizers
 from models.FCN import FCN8
-from keras.preprocessing.image import ImageDataGenerator
-from utils.utils import dataset1_Utils, commonUtils, dataset1_generator_reader
+from utils.utils import commonUtils, get_dataset_info, print_time_log
+from utils.ImageDataGenerator import ImageDataGenerator
 from config import VGG_Weights_path
-import pickle
 
 
 if __name__ == '__main__':
-    commonUtils.GPUConfig(gpu_device="1")
+    starttime = datetime.datetime.now()
+    commonUtils.GPUConfig()
+    dataset_name = 'dataset1'
     dataset_dir = os.path.abspath('/dataset/dataset1')
-    images_data_dir = os.path.join(dataset_dir, 'images_prepped_train/')
-    masks_data_dir = os.path.join(dataset_dir, 'annotations_prepped_train/')
-    print(images_data_dir, masks_data_dir)
 
+    train_gen = ImageDataGenerator(random_crop=True,
+                                   rotation_range=0,
+                                   brightness_range=None,
+                                   zoom_range=[0.5, 2],
+                                   channel_shift_range=0,
+                                   horizontal_flip=True,
+                                   vertical_flip=False)
 
-    dataGen = dataset1_generator_reader(
-        images_data_dir=images_data_dir,
-        masks_data_dir=masks_data_dir,
-        train_batch_size=16,
-        val_batch_size=16,
-        crop_size=(224, 224),
-        nClasses=12,
-        train_val_split_ratio=0.85
-        )
-    steps_per_epoch = dataGen.n_train_file//dataGen.train_batch_size  # 22
-    validation_steps = dataGen.n_val_file // dataGen.val_batch_size  # 22
-    train_generator = dataGen.train_generator_data()
-    validation_generator = dataGen.val_generator_data()
+    valid_gen = ImageDataGenerator()
+    train_image_names, train_label_names, valid_image_names, valid_label_names = get_dataset_info(
+        dataset_name, dataset_dir)
+
+    # config training parameters
+    num_classes = 12
+    train_batch_size = 16
+    valid_batch_size = 16
+    target_size = (224, 224)
+    seed = 20191224
+    data_aug_rate = 0
+    num_valid_images = len(valid_image_names)
+
+    # generator train and valid data
+    train_generator = train_gen.flow(images_list=train_image_names,
+                                     labels_list=train_label_names,
+                                     num_classes=num_classes,
+                                     batch_size=train_batch_size,
+                                     target_size=target_size,
+                                     pad_size=0.,
+                                     shuffle=True,
+                                     seed=seed,
+                                     data_aug_rate=data_aug_rate)
+
+    valid_generator = valid_gen.flow(images_list=valid_image_names,
+                                     labels_list=valid_label_names,
+                                     num_classes=num_classes,
+                                     batch_size=valid_batch_size,
+                                     target_size=target_size,
+                                     pad_size=0.)
+    # training and validation steps
+    steps_per_epoch = len(train_image_names) // train_batch_size
+    validation_steps = num_valid_images // valid_batch_size
+
     tensorboard = TensorBoard(
-        log_dir='./logs/dataset1/FCN-dataset1-generator-{}'.format(time.strftime('%Y-%m-%d_%H_%M_%S', time.localtime())))
+        log_dir='./logs/dataset1/FCN-dataset1-{}'.format(time.strftime('%Y-%m-%d_%H_%M_%S', time.localtime())))
     model = FCN8(nClasses=12,
                  input_height=224,
                  input_width=224,
@@ -47,18 +79,21 @@ if __name__ == '__main__':
                   optimizer=sgd,
                   metrics=['accuracy']
                   )
-    best_weights_filepath = './data/FCN-generator-best_weights.hdf5'
+    best_weights_filepath = './data/FCN-dataset1-best_weights.hdf5'
     earlyStopping = EarlyStopping(
-        monitor='val_loss', patience=30, verbose=1, mode='auto')
+        monitor='val_loss', patience=30, verbose=2, mode='auto')
     saveBestModel = ModelCheckpoint(
-        best_weights_filepath, monitor='val_loss', verbose=1, save_best_only=True, mode='auto')
-
+        best_weights_filepath, monitor='val_loss', verbose=2, save_best_only=True, mode='auto')
+    reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=10,
+                                  verbose=2, mode='auto', epsilon=0.0001, cooldown=0, min_lr=1E-5)
     hist1 = model.fit_generator(generator=train_generator,
                                 steps_per_epoch=steps_per_epoch,
-                                validation_data=validation_generator,
+                                validation_data=valid_generator,
                                 validation_steps=validation_steps,
-                                epochs=200,
+                                epochs=500,
                                 verbose=1,
-                                callbacks=[tensorboard, earlyStopping, saveBestModel])    
-    with open('./data/FCN-dataset1-generator.pickle', 'wb') as file_pi:
-       pickle.dump(hist1.history, file_pi)
+                                callbacks=[tensorboard, earlyStopping, saveBestModel, reduce_lr])
+    with open('./data/FCN-dataset1.pickle', 'wb') as file_pi:
+        pickle.dump(hist1.history, file_pi)
+    endtime = datetime.datetime.now()
+    print_time_log(starttime, endtime)
